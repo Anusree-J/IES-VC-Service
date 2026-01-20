@@ -1,0 +1,127 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js required tables
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  issuer        Issuer?
+  addedUsers    AllowedUser[] @relation("AddedBy")
+  revokedCredentials Credential[] @relation("RevokedBy")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Allowed users whitelist
+model AllowedUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  addedBy   User?    @relation("AddedBy", fields: [addedById], references: [id])
+  addedById String?
+  createdAt DateTime @default(now())
+}
+
+// Issuers (one per user)
+model Issuer {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issuerDid String
+  issuerName String
+
+  // Schema IDs (created on first use)
+  consumptionSchemaId     String?
+  consumptionTemplateId   String?
+  utilityCustomerSchemaId String?
+  utilityCustomerTemplateId String?
+  generationSchemaId      String?
+  generationTemplateId    String?
+  storageSchemaId         String?
+  storageTemplateId       String?
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  credentials Credential[]
+}
+
+// Issued credentials tracking
+model Credential {
+  id             String    @id @default(cuid())
+  issuerId       String
+  issuer         Issuer    @relation(fields: [issuerId], references: [id], onDelete: Cascade)
+  credentialId   String    // DID from SunbirdRC
+  credentialType CredentialType
+  subjectId      String?   // did:rcw:consumer-xxx
+  subjectName    String?
+  subjectData    Json      // Full credential subject data
+  status         CredentialStatus @default(ISSUED)
+  issuedAt       DateTime  @default(now())
+  revokedAt      DateTime?
+  revokedBy      User?     @relation("RevokedBy", fields: [revokedById], references: [id])
+  revokedById    String?
+
+  @@index([issuerId])
+  @@index([status])
+  @@index([credentialType])
+}
+
+enum CredentialType {
+  CONSUMPTION
+  UTILITY_CUSTOMER
+  GENERATION
+  STORAGE
+}
+
+enum CredentialStatus {
+  ISSUED
+  REVOKED
+}

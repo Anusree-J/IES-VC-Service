@@ -1,0 +1,1202 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-5e6f-7g8h-9i0j-k1l2m3n4o5p6",
+    "name": "IES Energy Verifiable Credentials (Complete)",
+    "description": "Complete Postman collection for IES Energy Verifiable Credentials with proper JSON-LD contexts hosted on GitHub Pages.\n\nIncludes:\n- Consumption Profile VC\n- Utility Customer VC\n- Generation Profile VC\n- Storage Profile VC\n\n**Features:**\n- Schema creation\n- Template creation (for PDF/QR rendering)\n- Credential issuance\n- Get credential (JSON & PDF)\n- Verification\n- Revocation\n\n**Context Files:** https://github.com/Anusree-J/vc_context/tree/main/energy\n\n**Tested and Verified:** All credentials successfully issue and verify against the SunbirdRC credential service.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Setup - Generate Issuer DID",
+      "item": [
+        {
+          "name": "Generate Utility Issuer DID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"issuer_did\", jsonData[0].id);",
+                  "pm.test(\"Issuer DID generated successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(jsonData[0].id).to.include(\"did:\");",
+                  "});",
+                  "console.log(\"Issuer DID:\", jsonData[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"content\": [\n        {\n            \"alsoKnownAs\": [\"energy-utility-issuer@ies.gov\"],\n            \"services\": [],\n            \"method\": \"rcw\"\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/identity/did/generate",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["identity", "did", "generate"]
+            },
+            "description": "Generate a DID for the utility company that will issue energy credentials."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Consumption Profile VC",
+      "item": [
+        {
+          "name": "1.1 Create Consumption Profile Schema",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"consumption_schema_id\", jsonData.schema.id);",
+                  "pm.test(\"Schema created successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(jsonData.schema.id).to.include(\"did:schema:\");",
+                  "});",
+                  "console.log(\"Schema ID:\", jsonData.schema.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"schema\": {\n        \"type\": \"https://anusree-j.github.io/vc_context/energy/consumption-profile-context.json#ConsumptionProfileCredential\",\n        \"version\": \"1.0.0\",\n        \"id\": \"consumption-profile-credential-v1\",\n        \"name\": \"Consumption Profile Credential\",\n        \"author\": \"{{issuer_did}}\",\n        \"authored\": \"2026-01-18T00:00:00.000Z\",\n        \"schema\": {\n            \"$id\": \"ConsumptionProfileCredential-1.0\",\n            \"$schema\": \"https://json-schema.org/draft/2019-09/schema\",\n            \"description\": \"Energy Consumption Profile Credential\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"consumerNumber\": { \"type\": \"string\", \"description\": \"Unique consumer identifier\" },\n                \"fullName\": { \"type\": \"string\", \"description\": \"Consumer full name\" },\n                \"premisesType\": { \"type\": \"string\", \"description\": \"Type of premises (Residential/Commercial/Industrial)\" },\n                \"connectionType\": { \"type\": \"string\", \"description\": \"Electrical connection type\" },\n                \"sanctionedLoadKW\": { \"type\": \"string\", \"description\": \"Sanctioned load in kilowatts\" },\n                \"tariffCategoryCode\": { \"type\": \"string\", \"description\": \"Tariff category code\" },\n                \"meterNumber\": { \"type\": \"string\", \"description\": \"Meter serial number\" }\n            },\n            \"required\": [\"consumerNumber\", \"fullName\"],\n            \"additionalProperties\": true\n        }\n    },\n    \"tags\": [\"energy\", \"consumption\", \"utility\", \"ies\"],\n    \"status\": \"DRAFT\"\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential-schema/credential-schema",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential-schema", "credential-schema"]
+            },
+            "description": "Creates the JSON Schema for Consumption Profile Credentials."
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 Create Consumption Profile Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"consumption_template_id\", jsonData.template.templateId);",
+                  "pm.test(\"Template created successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(jsonData.template.templateId).to.not.be.undefined;",
+                  "});",
+                  "console.log(\"Template ID:\", jsonData.template.templateId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"schemaId\": \"{{consumption_schema_id}}\",\n    \"schemaVersion\": \"1.0.0\",\n    \"template\": \"<html lang='en'><head><meta charset='UTF-8'/><meta name='viewport' content='width=device-width, initial-scale=1.0'/><title>Consumption Profile Credential</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px}.certificate{background:white;border-radius:20px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-width:600px;width:100%;overflow:hidden}.header{background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 100%);color:white;padding:30px;text-align:center}.header h1{font-size:24px;margin-bottom:10px}.header .subtitle{opacity:0.9;font-size:14px}.content{padding:30px}.credential-type{background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:white;padding:15px 20px;border-radius:10px;text-align:center;margin-bottom:25px;font-weight:600;font-size:18px}.info-grid{display:grid;gap:15px}.info-item{background:#f8fafc;padding:15px;border-radius:10px;border-left:4px solid #3b82f6}.info-item .label{color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}.info-item .value{color:#1e293b;font-size:16px;font-weight:600}.qr-section{margin-top:25px;text-align:center;padding:20px;background:#f1f5f9;border-radius:10px}.qr-section img{max-width:150px;height:auto;margin-bottom:10px}.qr-section .scan-text{color:#64748b;font-size:12px}.footer{background:#f8fafc;padding:20px;text-align:center;border-top:1px solid #e2e8f0}.footer .issuer{color:#64748b;font-size:12px}.footer .date{color:#94a3b8;font-size:11px;margin-top:5px}</style></head><body><div class='certificate'><div class='header'><h1>IES Energy Utility</h1><div class='subtitle'>Verifiable Credential Certificate</div></div><div class='content'><div class='credential-type'>Consumption Profile Credential</div><div class='info-grid'><div class='info-item'><div class='label'>Consumer Number</div><div class='value'>{{consumerNumber}}</div></div><div class='info-item'><div class='label'>Full Name</div><div class='value'>{{fullName}}</div></div><div class='info-item'><div class='label'>Premises Type</div><div class='value'>{{premisesType}}</div></div><div class='info-item'><div class='label'>Connection Type</div><div class='value'>{{connectionType}}</div></div><div class='info-item'><div class='label'>Sanctioned Load</div><div class='value'>{{sanctionedLoadKW}} kW</div></div><div class='info-item'><div class='label'>Tariff Category</div><div class='value'>{{tariffCategoryCode}}</div></div><div class='info-item'><div class='label'>Meter Number</div><div class='value'>{{meterNumber}}</div></div></div><div class='qr-section'><img src='{{qr}}' alt='QR Code'/><div class='scan-text'>Scan to verify credential</div></div></div><div class='footer'><div class='issuer'>Issued by IES Energy Utility</div><div class='date'>This is a digitally signed verifiable credential</div></div></div></body></html>\",\n    \"type\": \"Handlebar\"\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential-schema/template",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential-schema", "template"]
+            },
+            "description": "Creates the HTML template for rendering Consumption Profile Credential as PDF with QR code."
+          },
+          "response": []
+        },
+        {
+          "name": "1.3 Issue Consumption Profile Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"consumption_credential_id\", jsonData.credential.id);",
+                  "pm.test(\"Credential issued successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(jsonData.credential.id).to.include(\"did:\");",
+                  "    pm.expect(jsonData.credential.proof).to.not.be.undefined;",
+                  "});",
+                  "console.log(\"Credential ID:\", jsonData.credential.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"credential\": {\n        \"@context\": [\n            \"https://www.w3.org/2018/credentials/v1\",\n            \"https://anusree-j.github.io/vc_context/energy/consumption-profile-context.json\"\n        ],\n        \"type\": [\"VerifiableCredential\", \"ConsumptionProfileCredential\"],\n        \"issuer\": \"{{issuer_did}}\",\n        \"issuanceDate\": \"2026-01-18T00:00:00.000Z\",\n        \"expirationDate\": \"2027-01-18T23:59:59.000Z\",\n        \"credentialSubject\": {\n            \"id\": \"did:rcw:consumer-jane-doe\",\n            \"type\": \"ConsumptionProfileCredential\",\n            \"consumerNumber\": \"UTIL-2026-001234567\",\n            \"fullName\": \"Jane Doe\",\n            \"premisesType\": \"Residential\",\n            \"connectionType\": \"Single Phase\",\n            \"sanctionedLoadKW\": \"5\",\n            \"tariffCategoryCode\": \"RES-01\",\n            \"meterNumber\": \"MET2026789456123\"\n        }\n    },\n    \"credentialSchemaId\": \"{{consumption_schema_id}}\",\n    \"credentialSchemaVersion\": \"1.0.0\",\n    \"tags\": [\"energy\", \"consumption\", \"residential\"]\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/issue",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "issue"]
+            },
+            "description": "Issues a Consumption Profile VC for a residential consumer."
+          },
+          "response": []
+        },
+        {
+          "name": "1.4 Get Consumption Profile Credential (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credential retrieved successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    let jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.type).to.include(\"ConsumptionProfileCredential\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {
+              "accept": true
+            }
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{consumption_credential_id}}",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{consumption_credential_id}}"]
+            },
+            "description": "Retrieves the issued Consumption Profile Credential as JSON."
+          },
+          "response": []
+        },
+        {
+          "name": "1.5 Get Consumption Profile Credential (PDF)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"PDF retrieved successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {
+              "accept": true
+            }
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/pdf",
+                "type": "text"
+              },
+              {
+                "key": "templateId",
+                "value": "{{consumption_template_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{consumption_credential_id}}",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{consumption_credential_id}}"]
+            },
+            "description": "Retrieves the issued Consumption Profile Credential as PDF with QR code. Save the response to view the certificate."
+          },
+          "response": []
+        },
+        {
+          "name": "1.6 Verify Consumption Profile Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credential verification successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    let jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"ISSUED\");",
+                  "    pm.expect(jsonData.checks[0].proof).to.eql(\"OK\");",
+                  "    pm.expect(jsonData.checks[0].revoked).to.eql(\"OK\");",
+                  "    pm.expect(jsonData.checks[0].expired).to.eql(\"OK\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{consumption_credential_id}}/verify",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{consumption_credential_id}}", "verify"]
+            },
+            "description": "Verifies the Consumption Profile Credential."
+          },
+          "response": []
+        },
+        {
+          "name": "1.7 Revoke Consumption Profile Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credential revoked successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "console.log(\"Credential revoked:\", pm.collectionVariables.get(\"consumption_credential_id\"));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{consumption_credential_id}}",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{consumption_credential_id}}"]
+            },
+            "description": "Revokes the Consumption Profile Credential. After revocation, verification will show revoked status."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Utility Customer VC",
+      "item": [
+        {
+          "name": "2.1 Create Utility Customer Schema",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"utility_customer_schema_id\", jsonData.schema.id);",
+                  "pm.test(\"Schema created successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "console.log(\"Schema ID:\", jsonData.schema.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"schema\": {\n        \"type\": \"https://anusree-j.github.io/vc_context/energy/utility-customer-context.json#UtilityCustomerCredential\",\n        \"version\": \"1.0.0\",\n        \"id\": \"utility-customer-credential-v1\",\n        \"name\": \"Utility Customer Credential\",\n        \"author\": \"{{issuer_did}}\",\n        \"authored\": \"2026-01-18T00:00:00.000Z\",\n        \"schema\": {\n            \"$id\": \"UtilityCustomerCredential-1.0\",\n            \"$schema\": \"https://json-schema.org/draft/2019-09/schema\",\n            \"description\": \"Utility Customer Credential\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"consumerNumber\": { \"type\": \"string\", \"description\": \"Unique consumer identifier\" },\n                \"fullName\": { \"type\": \"string\", \"description\": \"Customer full name\" },\n                \"maskedIdNumber\": { \"type\": \"string\", \"description\": \"Masked government ID\" },\n                \"installationAddress\": { \"type\": \"string\", \"description\": \"Service installation address\" },\n                \"meterNumber\": { \"type\": \"string\", \"description\": \"Meter serial number\" },\n                \"serviceConnectionDate\": { \"type\": \"string\", \"description\": \"Date of service connection\" }\n            },\n            \"required\": [\"consumerNumber\", \"fullName\"],\n            \"additionalProperties\": true\n        }\n    },\n    \"tags\": [\"energy\", \"utility\", \"customer\", \"ies\"],\n    \"status\": \"DRAFT\"\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential-schema/credential-schema",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential-schema", "credential-schema"]
+            },
+            "description": "Creates the JSON Schema for Utility Customer Credentials."
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 Create Utility Customer Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"utility_customer_template_id\", jsonData.template.templateId);",
+                  "pm.test(\"Template created successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "console.log(\"Template ID:\", jsonData.template.templateId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"schemaId\": \"{{utility_customer_schema_id}}\",\n    \"schemaVersion\": \"1.0.0\",\n    \"template\": \"<html lang='en'><head><meta charset='UTF-8'/><meta name='viewport' content='width=device-width, initial-scale=1.0'/><title>Utility Customer Credential</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px}.certificate{background:white;border-radius:20px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-width:600px;width:100%;overflow:hidden}.header{background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 100%);color:white;padding:30px;text-align:center}.header h1{font-size:24px;margin-bottom:10px}.header .subtitle{opacity:0.9;font-size:14px}.content{padding:30px}.credential-type{background:linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%);color:white;padding:15px 20px;border-radius:10px;text-align:center;margin-bottom:25px;font-weight:600;font-size:18px}.info-grid{display:grid;gap:15px}.info-item{background:#f8fafc;padding:15px;border-radius:10px;border-left:4px solid #8b5cf6}.info-item .label{color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}.info-item .value{color:#1e293b;font-size:16px;font-weight:600}.qr-section{margin-top:25px;text-align:center;padding:20px;background:#f1f5f9;border-radius:10px}.qr-section img{max-width:150px;height:auto;margin-bottom:10px}.qr-section .scan-text{color:#64748b;font-size:12px}.footer{background:#f8fafc;padding:20px;text-align:center;border-top:1px solid #e2e8f0}.footer .issuer{color:#64748b;font-size:12px}.footer .date{color:#94a3b8;font-size:11px;margin-top:5px}</style></head><body><div class='certificate'><div class='header'><h1>IES Energy Utility</h1><div class='subtitle'>Verifiable Credential Certificate</div></div><div class='content'><div class='credential-type'>Utility Customer Credential</div><div class='info-grid'><div class='info-item'><div class='label'>Consumer Number</div><div class='value'>{{consumerNumber}}</div></div><div class='info-item'><div class='label'>Full Name</div><div class='value'>{{fullName}}</div></div><div class='info-item'><div class='label'>ID Number (Masked)</div><div class='value'>{{maskedIdNumber}}</div></div><div class='info-item'><div class='label'>Installation Address</div><div class='value'>{{installationAddress}}</div></div><div class='info-item'><div class='label'>Meter Number</div><div class='value'>{{meterNumber}}</div></div><div class='info-item'><div class='label'>Service Connection Date</div><div class='value'>{{serviceConnectionDate}}</div></div></div><div class='qr-section'><img src='{{qr}}' alt='QR Code'/><div class='scan-text'>Scan to verify credential</div></div></div><div class='footer'><div class='issuer'>Issued by IES Energy Utility</div><div class='date'>This is a digitally signed verifiable credential</div></div></div></body></html>\",\n    \"type\": \"Handlebar\"\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential-schema/template",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential-schema", "template"]
+            },
+            "description": "Creates the HTML template for rendering Utility Customer Credential as PDF with QR code."
+          },
+          "response": []
+        },
+        {
+          "name": "2.3 Issue Utility Customer Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"utility_customer_credential_id\", jsonData.credential.id);",
+                  "pm.test(\"Credential issued successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(jsonData.credential.proof).to.not.be.undefined;",
+                  "});",
+                  "console.log(\"Credential ID:\", jsonData.credential.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"credential\": {\n        \"@context\": [\n            \"https://www.w3.org/2018/credentials/v1\",\n            \"https://anusree-j.github.io/vc_context/energy/utility-customer-context.json\"\n        ],\n        \"type\": [\"VerifiableCredential\", \"UtilityCustomerCredential\"],\n        \"issuer\": \"{{issuer_did}}\",\n        \"issuanceDate\": \"2026-01-18T00:00:00.000Z\",\n        \"expirationDate\": \"2027-01-18T23:59:59.000Z\",\n        \"credentialSubject\": {\n            \"id\": \"did:rcw:customer-john-smith\",\n            \"type\": \"UtilityCustomerCredential\",\n            \"consumerNumber\": \"CUST-2026-987654321\",\n            \"fullName\": \"John Smith\",\n            \"maskedIdNumber\": \"XXXX-XXXX-1234\",\n            \"installationAddress\": \"123 Green Energy Lane, Solar City\",\n            \"meterNumber\": \"MET2026123456789\",\n            \"serviceConnectionDate\": \"2020-06-15\"\n        }\n    },\n    \"credentialSchemaId\": \"{{utility_customer_schema_id}}\",\n    \"credentialSchemaVersion\": \"1.0.0\",\n    \"tags\": [\"energy\", \"utility\", \"customer\"]\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/issue",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "issue"]
+            },
+            "description": "Issues a Utility Customer VC."
+          },
+          "response": []
+        },
+        {
+          "name": "2.4 Get Utility Customer Credential (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credential retrieved successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    let jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.type).to.include(\"UtilityCustomerCredential\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {
+              "accept": true
+            }
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{utility_customer_credential_id}}",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{utility_customer_credential_id}}"]
+            },
+            "description": "Retrieves the issued Utility Customer Credential as JSON."
+          },
+          "response": []
+        },
+        {
+          "name": "2.5 Get Utility Customer Credential (PDF)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"PDF retrieved successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {
+              "accept": true
+            }
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/pdf",
+                "type": "text"
+              },
+              {
+                "key": "templateId",
+                "value": "{{utility_customer_template_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{utility_customer_credential_id}}",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{utility_customer_credential_id}}"]
+            },
+            "description": "Retrieves the issued Utility Customer Credential as PDF with QR code."
+          },
+          "response": []
+        },
+        {
+          "name": "2.6 Verify Utility Customer Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credential verification successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    let jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"ISSUED\");",
+                  "    pm.expect(jsonData.checks[0].proof).to.eql(\"OK\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{utility_customer_credential_id}}/verify",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{utility_customer_credential_id}}", "verify"]
+            },
+            "description": "Verifies the Utility Customer Credential."
+          },
+          "response": []
+        },
+        {
+          "name": "2.7 Revoke Utility Customer Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credential revoked successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{utility_customer_credential_id}}",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{utility_customer_credential_id}}"]
+            },
+            "description": "Revokes the Utility Customer Credential."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Generation Profile VC",
+      "item": [
+        {
+          "name": "3.1 Create Generation Profile Schema",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"generation_schema_id\", jsonData.schema.id);",
+                  "pm.test(\"Schema created successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "console.log(\"Schema ID:\", jsonData.schema.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"schema\": {\n        \"type\": \"https://anusree-j.github.io/vc_context/energy/generation-profile-context.json#GenerationProfileCredential\",\n        \"version\": \"1.0.0\",\n        \"id\": \"generation-profile-credential-v1\",\n        \"name\": \"Generation Profile Credential\",\n        \"author\": \"{{issuer_did}}\",\n        \"authored\": \"2026-01-18T00:00:00.000Z\",\n        \"schema\": {\n            \"$id\": \"GenerationProfileCredential-1.0\",\n            \"$schema\": \"https://json-schema.org/draft/2019-09/schema\",\n            \"description\": \"Generation Profile Credential for renewable energy systems\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"consumerNumber\": { \"type\": \"string\", \"description\": \"Prosumer identifier\" },\n                \"fullName\": { \"type\": \"string\", \"description\": \"Prosumer full name\" },\n                \"generationType\": { \"type\": \"string\", \"description\": \"Type of generation (Solar PV/Wind/etc.)\" },\n                \"capacityKW\": { \"type\": \"string\", \"description\": \"Generation capacity in kW\" },\n                \"commissioningDate\": { \"type\": \"string\", \"description\": \"Date of commissioning\" },\n                \"meterNumber\": { \"type\": \"string\", \"description\": \"Generation meter number\" },\n                \"assetId\": { \"type\": \"string\", \"description\": \"Unique asset identifier\" },\n                \"equipmentManufacturer\": { \"type\": \"string\", \"description\": \"Equipment manufacturer\" },\n                \"equipmentModel\": { \"type\": \"string\", \"description\": \"Equipment model\" }\n            },\n            \"required\": [\"consumerNumber\", \"fullName\", \"generationType\"],\n            \"additionalProperties\": true\n        }\n    },\n    \"tags\": [\"energy\", \"generation\", \"renewable\", \"ies\"],\n    \"status\": \"DRAFT\"\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential-schema/credential-schema",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential-schema", "credential-schema"]
+            },
+            "description": "Creates the JSON Schema for Generation Profile Credentials."
+          },
+          "response": []
+        },
+        {
+          "name": "3.2 Create Generation Profile Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"generation_template_id\", jsonData.template.templateId);",
+                  "pm.test(\"Template created successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "console.log(\"Template ID:\", jsonData.template.templateId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"schemaId\": \"{{generation_schema_id}}\",\n    \"schemaVersion\": \"1.0.0\",\n    \"template\": \"<html lang='en'><head><meta charset='UTF-8'/><meta name='viewport' content='width=device-width, initial-scale=1.0'/><title>Generation Profile Credential</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px}.certificate{background:white;border-radius:20px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-width:600px;width:100%;overflow:hidden}.header{background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 100%);color:white;padding:30px;text-align:center}.header h1{font-size:24px;margin-bottom:10px}.header .subtitle{opacity:0.9;font-size:14px}.content{padding:30px}.credential-type{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:white;padding:15px 20px;border-radius:10px;text-align:center;margin-bottom:25px;font-weight:600;font-size:18px}.info-grid{display:grid;gap:15px}.info-item{background:#f8fafc;padding:15px;border-radius:10px;border-left:4px solid #f59e0b}.info-item .label{color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}.info-item .value{color:#1e293b;font-size:16px;font-weight:600}.qr-section{margin-top:25px;text-align:center;padding:20px;background:#f1f5f9;border-radius:10px}.qr-section img{max-width:150px;height:auto;margin-bottom:10px}.qr-section .scan-text{color:#64748b;font-size:12px}.footer{background:#f8fafc;padding:20px;text-align:center;border-top:1px solid #e2e8f0}.footer .issuer{color:#64748b;font-size:12px}.footer .date{color:#94a3b8;font-size:11px;margin-top:5px}</style></head><body><div class='certificate'><div class='header'><h1>IES Energy Utility</h1><div class='subtitle'>Verifiable Credential Certificate</div></div><div class='content'><div class='credential-type'>Generation Profile Credential</div><div class='info-grid'><div class='info-item'><div class='label'>Consumer Number</div><div class='value'>{{consumerNumber}}</div></div><div class='info-item'><div class='label'>Full Name</div><div class='value'>{{fullName}}</div></div><div class='info-item'><div class='label'>Generation Type</div><div class='value'>{{generationType}}</div></div><div class='info-item'><div class='label'>Capacity</div><div class='value'>{{capacityKW}} kW</div></div><div class='info-item'><div class='label'>Commissioning Date</div><div class='value'>{{commissioningDate}}</div></div><div class='info-item'><div class='label'>Meter Number</div><div class='value'>{{meterNumber}}</div></div><div class='info-item'><div class='label'>Asset ID</div><div class='value'>{{assetId}}</div></div><div class='info-item'><div class='label'>Equipment</div><div class='value'>{{equipmentManufacturer}} - {{equipmentModel}}</div></div></div><div class='qr-section'><img src='{{qr}}' alt='QR Code'/><div class='scan-text'>Scan to verify credential</div></div></div><div class='footer'><div class='issuer'>Issued by IES Energy Utility</div><div class='date'>This is a digitally signed verifiable credential</div></div></div></body></html>\",\n    \"type\": \"Handlebar\"\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential-schema/template",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential-schema", "template"]
+            },
+            "description": "Creates the HTML template for rendering Generation Profile Credential as PDF with QR code."
+          },
+          "response": []
+        },
+        {
+          "name": "3.3 Issue Generation Profile Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"generation_credential_id\", jsonData.credential.id);",
+                  "pm.test(\"Credential issued successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(jsonData.credential.proof).to.not.be.undefined;",
+                  "});",
+                  "console.log(\"Credential ID:\", jsonData.credential.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"credential\": {\n        \"@context\": [\n            \"https://www.w3.org/2018/credentials/v1\",\n            \"https://anusree-j.github.io/vc_context/energy/generation-profile-context.json\"\n        ],\n        \"type\": [\"VerifiableCredential\", \"GenerationProfileCredential\"],\n        \"issuer\": \"{{issuer_did}}\",\n        \"issuanceDate\": \"2026-01-18T00:00:00.000Z\",\n        \"expirationDate\": \"2027-01-18T23:59:59.000Z\",\n        \"credentialSubject\": {\n            \"id\": \"did:rcw:prosumer-solar-alice\",\n            \"type\": \"GenerationProfileCredential\",\n            \"consumerNumber\": \"GEN-2026-555888999\",\n            \"fullName\": \"Alice Solar\",\n            \"generationType\": \"Solar PV\",\n            \"capacityKW\": \"10\",\n            \"commissioningDate\": \"2024-03-15\",\n            \"meterNumber\": \"GENMET2026001122\",\n            \"assetId\": \"SOLAR-ASSET-001\",\n            \"equipmentManufacturer\": \"SunPower\",\n            \"equipmentModel\": \"Maxeon 6 AC\"\n        }\n    },\n    \"credentialSchemaId\": \"{{generation_schema_id}}\",\n    \"credentialSchemaVersion\": \"1.0.0\",\n    \"tags\": [\"energy\", \"generation\", \"solar\"]\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/issue",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "issue"]
+            },
+            "description": "Issues a Generation Profile VC for a solar prosumer."
+          },
+          "response": []
+        },
+        {
+          "name": "3.4 Get Generation Profile Credential (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credential retrieved successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    let jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.type).to.include(\"GenerationProfileCredential\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {
+              "accept": true
+            }
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{generation_credential_id}}",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{generation_credential_id}}"]
+            },
+            "description": "Retrieves the issued Generation Profile Credential as JSON."
+          },
+          "response": []
+        },
+        {
+          "name": "3.5 Get Generation Profile Credential (PDF)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"PDF retrieved successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {
+              "accept": true
+            }
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/pdf",
+                "type": "text"
+              },
+              {
+                "key": "templateId",
+                "value": "{{generation_template_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{generation_credential_id}}",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{generation_credential_id}}"]
+            },
+            "description": "Retrieves the issued Generation Profile Credential as PDF with QR code."
+          },
+          "response": []
+        },
+        {
+          "name": "3.6 Verify Generation Profile Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credential verification successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    let jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"ISSUED\");",
+                  "    pm.expect(jsonData.checks[0].proof).to.eql(\"OK\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{generation_credential_id}}/verify",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{generation_credential_id}}", "verify"]
+            },
+            "description": "Verifies the Generation Profile Credential."
+          },
+          "response": []
+        },
+        {
+          "name": "3.7 Revoke Generation Profile Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credential revoked successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{generation_credential_id}}",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{generation_credential_id}}"]
+            },
+            "description": "Revokes the Generation Profile Credential."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Storage Profile VC",
+      "item": [
+        {
+          "name": "4.1 Create Storage Profile Schema",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"storage_schema_id\", jsonData.schema.id);",
+                  "pm.test(\"Schema created successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "console.log(\"Schema ID:\", jsonData.schema.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"schema\": {\n        \"type\": \"https://anusree-j.github.io/vc_context/energy/storage-profile-context.json#StorageProfileCredential\",\n        \"version\": \"1.0.0\",\n        \"id\": \"storage-profile-credential-v1\",\n        \"name\": \"Storage Profile Credential\",\n        \"author\": \"{{issuer_did}}\",\n        \"authored\": \"2026-01-18T00:00:00.000Z\",\n        \"schema\": {\n            \"$id\": \"StorageProfileCredential-1.0\",\n            \"$schema\": \"https://json-schema.org/draft/2019-09/schema\",\n            \"description\": \"Storage Profile Credential for battery/energy storage systems\",\n            \"type\": \"object\",\n            \"properties\": {\n                \"consumerNumber\": { \"type\": \"string\", \"description\": \"Consumer identifier\" },\n                \"fullName\": { \"type\": \"string\", \"description\": \"Owner full name\" },\n                \"storageType\": { \"type\": \"string\", \"description\": \"Type of storage (Lithium-Ion/Lead-Acid/etc.)\" },\n                \"storageCapacityKWh\": { \"type\": \"string\", \"description\": \"Storage capacity in kWh\" },\n                \"powerRatingKW\": { \"type\": \"string\", \"description\": \"Power rating in kW\" },\n                \"commissioningDate\": { \"type\": \"string\", \"description\": \"Date of commissioning\" },\n                \"meterNumber\": { \"type\": \"string\", \"description\": \"Storage meter number\" },\n                \"assetId\": { \"type\": \"string\", \"description\": \"Unique asset identifier\" }\n            },\n            \"required\": [\"consumerNumber\", \"fullName\", \"storageType\"],\n            \"additionalProperties\": true\n        }\n    },\n    \"tags\": [\"energy\", \"storage\", \"battery\", \"ies\"],\n    \"status\": \"DRAFT\"\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential-schema/credential-schema",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential-schema", "credential-schema"]
+            },
+            "description": "Creates the JSON Schema for Storage Profile Credentials."
+          },
+          "response": []
+        },
+        {
+          "name": "4.2 Create Storage Profile Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"storage_template_id\", jsonData.template.templateId);",
+                  "pm.test(\"Template created successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "console.log(\"Template ID:\", jsonData.template.templateId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"schemaId\": \"{{storage_schema_id}}\",\n    \"schemaVersion\": \"1.0.0\",\n    \"template\": \"<html lang='en'><head><meta charset='UTF-8'/><meta name='viewport' content='width=device-width, initial-scale=1.0'/><title>Storage Profile Credential</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px}.certificate{background:white;border-radius:20px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-width:600px;width:100%;overflow:hidden}.header{background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 100%);color:white;padding:30px;text-align:center}.header h1{font-size:24px;margin-bottom:10px}.header .subtitle{opacity:0.9;font-size:14px}.content{padding:30px}.credential-type{background:linear-gradient(135deg,#06b6d4 0%,#0891b2 100%);color:white;padding:15px 20px;border-radius:10px;text-align:center;margin-bottom:25px;font-weight:600;font-size:18px}.info-grid{display:grid;gap:15px}.info-item{background:#f8fafc;padding:15px;border-radius:10px;border-left:4px solid #06b6d4}.info-item .label{color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}.info-item .value{color:#1e293b;font-size:16px;font-weight:600}.qr-section{margin-top:25px;text-align:center;padding:20px;background:#f1f5f9;border-radius:10px}.qr-section img{max-width:150px;height:auto;margin-bottom:10px}.qr-section .scan-text{color:#64748b;font-size:12px}.footer{background:#f8fafc;padding:20px;text-align:center;border-top:1px solid #e2e8f0}.footer .issuer{color:#64748b;font-size:12px}.footer .date{color:#94a3b8;font-size:11px;margin-top:5px}</style></head><body><div class='certificate'><div class='header'><h1>IES Energy Utility</h1><div class='subtitle'>Verifiable Credential Certificate</div></div><div class='content'><div class='credential-type'>Storage Profile Credential</div><div class='info-grid'><div class='info-item'><div class='label'>Consumer Number</div><div class='value'>{{consumerNumber}}</div></div><div class='info-item'><div class='label'>Full Name</div><div class='value'>{{fullName}}</div></div><div class='info-item'><div class='label'>Storage Type</div><div class='value'>{{storageType}}</div></div><div class='info-item'><div class='label'>Storage Capacity</div><div class='value'>{{storageCapacityKWh}} kWh</div></div><div class='info-item'><div class='label'>Power Rating</div><div class='value'>{{powerRatingKW}} kW</div></div><div class='info-item'><div class='label'>Commissioning Date</div><div class='value'>{{commissioningDate}}</div></div><div class='info-item'><div class='label'>Meter Number</div><div class='value'>{{meterNumber}}</div></div><div class='info-item'><div class='label'>Asset ID</div><div class='value'>{{assetId}}</div></div></div><div class='qr-section'><img src='{{qr}}' alt='QR Code'/><div class='scan-text'>Scan to verify credential</div></div></div><div class='footer'><div class='issuer'>Issued by IES Energy Utility</div><div class='date'>This is a digitally signed verifiable credential</div></div></div></body></html>\",\n    \"type\": \"Handlebar\"\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential-schema/template",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential-schema", "template"]
+            },
+            "description": "Creates the HTML template for rendering Storage Profile Credential as PDF with QR code."
+          },
+          "response": []
+        },
+        {
+          "name": "4.3 Issue Storage Profile Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"storage_credential_id\", jsonData.credential.id);",
+                  "pm.test(\"Credential issued successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(jsonData.credential.proof).to.not.be.undefined;",
+                  "});",
+                  "console.log(\"Credential ID:\", jsonData.credential.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"credential\": {\n        \"@context\": [\n            \"https://www.w3.org/2018/credentials/v1\",\n            \"https://anusree-j.github.io/vc_context/energy/storage-profile-context.json\"\n        ],\n        \"type\": [\"VerifiableCredential\", \"StorageProfileCredential\"],\n        \"issuer\": \"{{issuer_did}}\",\n        \"issuanceDate\": \"2026-01-18T00:00:00.000Z\",\n        \"expirationDate\": \"2027-01-18T23:59:59.000Z\",\n        \"credentialSubject\": {\n            \"id\": \"did:rcw:storage-bob-battery\",\n            \"type\": \"StorageProfileCredential\",\n            \"consumerNumber\": \"STOR-2026-777666555\",\n            \"fullName\": \"Bob Battery\",\n            \"storageType\": \"Lithium-Ion Battery\",\n            \"storageCapacityKWh\": \"13.5\",\n            \"powerRatingKW\": \"5\",\n            \"commissioningDate\": \"2024-08-20\",\n            \"meterNumber\": \"STORMET2026334455\",\n            \"assetId\": \"BATT-ASSET-002\"\n        }\n    },\n    \"credentialSchemaId\": \"{{storage_schema_id}}\",\n    \"credentialSchemaVersion\": \"1.0.0\",\n    \"tags\": [\"energy\", \"storage\", \"battery\"]\n}"
+            },
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/issue",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "issue"]
+            },
+            "description": "Issues a Storage Profile VC for a battery storage system."
+          },
+          "response": []
+        },
+        {
+          "name": "4.4 Get Storage Profile Credential (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credential retrieved successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    let jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.type).to.include(\"StorageProfileCredential\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {
+              "accept": true
+            }
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{storage_credential_id}}",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{storage_credential_id}}"]
+            },
+            "description": "Retrieves the issued Storage Profile Credential as JSON."
+          },
+          "response": []
+        },
+        {
+          "name": "4.5 Get Storage Profile Credential (PDF)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"PDF retrieved successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {
+              "accept": true
+            }
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/pdf",
+                "type": "text"
+              },
+              {
+                "key": "templateId",
+                "value": "{{storage_template_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{storage_credential_id}}",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{storage_credential_id}}"]
+            },
+            "description": "Retrieves the issued Storage Profile Credential as PDF with QR code."
+          },
+          "response": []
+        },
+        {
+          "name": "4.6 Verify Storage Profile Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credential verification successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    let jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"ISSUED\");",
+                  "    pm.expect(jsonData.checks[0].proof).to.eql(\"OK\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{storage_credential_id}}/verify",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{storage_credential_id}}", "verify"]
+            },
+            "description": "Verifies the Storage Profile Credential."
+          },
+          "response": []
+        },
+        {
+          "name": "4.7 Revoke Storage Profile Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credential revoked successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{beckn_credentials_host}}/credential/credentials/{{storage_credential_id}}",
+              "host": ["{{beckn_credentials_host}}"],
+              "path": ["credential", "credentials", "{{storage_credential_id}}"]
+            },
+            "description": "Revokes the Storage Profile Credential."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "beckn_credentials_host",
+      "value": "http://34.100.210.253",
+      "type": "string"
+    },
+    {
+      "key": "issuer_did",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "consumption_schema_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "consumption_template_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "consumption_credential_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "utility_customer_schema_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "utility_customer_template_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "utility_customer_credential_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "generation_schema_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "generation_template_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "generation_credential_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "storage_schema_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "storage_template_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "storage_credential_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
