@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       );
       console.log(`Created schema: ${schema.id}`);
 
-      // Create template
+      // Create template (has built-in retry logic for eventual consistency)
       const template = await createCredentialTemplate(
         schema.id,
         config.name,
@@ -138,19 +138,38 @@ export async function POST(request: Request) {
 
     // Provide more specific error messages
     if (error instanceof Error) {
+      // Log full error details
+      console.error("Full error details:", {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        cause: error.cause,
+      });
+
       if (error.message.includes("API request failed")) {
         return NextResponse.json(
           {
             error: "Failed to communicate with credential service",
             details: error.message,
+            cause: String(error.cause),
           },
           { status: 502 }
         );
       }
+
+      // Return detailed error for debugging
+      return NextResponse.json(
+        {
+          error: "Failed to set up issuer",
+          details: error.message,
+          name: error.name,
+        },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json(
-      { error: "Failed to set up issuer" },
+      { error: "Failed to set up issuer", details: String(error) },
       { status: 500 }
     );
   }

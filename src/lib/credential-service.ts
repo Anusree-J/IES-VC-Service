@@ -6,6 +6,7 @@
  */
 
 const CREDENTIAL_SERVICE_URL = process.env.CREDENTIAL_SERVICE_URL || "http://35.244.45.209";
+console.log("[credential-service] Using CREDENTIAL_SERVICE_URL:", CREDENTIAL_SERVICE_URL);
 
 // Types for API responses
 export interface GenerateDIDResponse {
@@ -144,32 +145,47 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${CREDENTIAL_SERVICE_URL}${endpoint}`;
+  console.log("[credential-service] Making request to:", url);
+  console.log("[credential-service] Request options:", JSON.stringify(options, null, 2));
 
   const defaultHeaders: Record<string, string> = {
     "Content-Type": "application/json",
   };
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...defaultHeaders,
-      ...options.headers,
-    },
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      },
+    });
 
-  if (!response.ok) {
-    let errorData;
-    try {
-      errorData = await response.json();
-    } catch {
-      errorData = await response.text();
+    console.log("[credential-service] Response status:", response.status, response.statusText);
+
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = await response.text();
+      }
+      console.log("[credential-service] Error response:", errorData);
+      throw new CredentialServiceError(
+        `API request failed: ${response.statusText}`,
+        response.status,
+        errorData
+      );
     }
-    throw new CredentialServiceError(
-      `API request failed: ${response.statusText}`,
-      response.status,
-      errorData
-    );
+
+    return handleSuccessResponse<T>(response);
+  } catch (error) {
+    console.error("[credential-service] Fetch error:", error);
+    throw error;
   }
+}
+
+async function handleSuccessResponse<T>(response: Response): Promise<T> {
 
   // Handle PDF responses
   const contentType = response.headers.get("content-type");
@@ -177,7 +193,9 @@ async function apiRequest<T>(
     return response.blob() as unknown as T;
   }
 
-  return response.json();
+  const jsonResponse = await response.json();
+  console.log("[credential-service] Success response:", JSON.stringify(jsonResponse, null, 2));
+  return jsonResponse;
 }
 
 /**
@@ -307,6 +325,7 @@ export async function createCredentialTemplate(
 
   const templateBody = {
     schemaId,
+    schemaVersion: "1.0.0",
     template,
     type: "Handlebar",
   };
@@ -317,6 +336,29 @@ export async function createCredentialTemplate(
   });
 }
 
+// Context URLs and types for each credential type
+const CREDENTIAL_CONTEXTS: Record<CredentialTypeKey, {
+  contextUrl: string;
+  credentialType: string;
+}> = {
+  consumption: {
+    contextUrl: "https://anusree-j.github.io/vc_context/energy/consumption-profile-context.json",
+    credentialType: "ConsumptionProfileCredential",
+  },
+  utility_customer: {
+    contextUrl: "https://anusree-j.github.io/vc_context/energy/utility-customer-context.json",
+    credentialType: "UtilityCustomerCredential",
+  },
+  generation: {
+    contextUrl: "https://anusree-j.github.io/vc_context/energy/generation-profile-context.json",
+    credentialType: "GenerationProfileCredential",
+  },
+  storage: {
+    contextUrl: "https://anusree-j.github.io/vc_context/energy/storage-profile-context.json",
+    credentialType: "StorageProfileCredential",
+  },
+};
+
 /**
  * Issue a credential
  */
@@ -325,25 +367,30 @@ export async function issueCredential(
   schemaId: string,
   subjectId: string,
   credentialSubject: Record<string, unknown>,
+  credentialType: CredentialTypeKey,
   expirationDate?: string
 ): Promise<IssuedCredential> {
+  const contextInfo = CREDENTIAL_CONTEXTS[credentialType];
+
   const credentialBody = {
     credential: {
       "@context": [
         "https://www.w3.org/2018/credentials/v1",
-        "https://www.w3.org/2018/credentials/examples/v1",
+        contextInfo.contextUrl,
       ],
-      type: ["VerifiableCredential"],
+      type: ["VerifiableCredential", contextInfo.credentialType],
       issuer: issuerDid,
       issuanceDate: new Date().toISOString(),
       expirationDate,
       credentialSubject: {
         id: subjectId,
+        type: contextInfo.credentialType,
         ...credentialSubject,
       },
     },
     credentialSchemaId: schemaId,
-    tags: [],
+    credentialSchemaVersion: "1.0.0",
+    tags: ["energy", credentialType],
   };
 
   return apiRequest<IssuedCredential>("/credential/credentials/issue", {
