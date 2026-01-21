@@ -82,7 +82,6 @@ export const CREDENTIAL_SCHEMAS: Record<CredentialTypeKey, {
     name: "Consumption Profile Credential",
     schemaName: "EnergyConsumptionProfile",
     fields: [
-      { name: "id", type: "string", required: true, description: "Customer DID (links to customer)" },
       { name: "consumerNumber", type: "string", required: true, description: "Full consumer account number" },
       { name: "fullName", type: "string", required: true, description: "Consumer name" },
       { name: "premisesType", type: "string", required: true, description: "Premises type", options: ["Residential", "Commercial", "Industrial", "Agricultural"] },
@@ -113,7 +112,6 @@ export const CREDENTIAL_SCHEMAS: Record<CredentialTypeKey, {
     name: "Generation Profile Credential",
     schemaName: "EnergyGenerationProfile",
     fields: [
-      { name: "id", type: "string", required: true, description: "Customer DID (links to customer)" },
       { name: "consumerNumber", type: "string", required: true, description: "Consumer account number" },
       { name: "fullName", type: "string", required: false, description: "Consumer name" },
       { name: "meterNumber", type: "string", required: false, description: "Meter serial number associated with this asset" },
@@ -129,7 +127,6 @@ export const CREDENTIAL_SCHEMAS: Record<CredentialTypeKey, {
     name: "Storage Profile Credential",
     schemaName: "EnergyStorageProfile",
     fields: [
-      { name: "id", type: "string", required: true, description: "Customer DID (links to customer)" },
       { name: "consumerNumber", type: "string", required: true, description: "Consumer account number" },
       { name: "fullName", type: "string", required: false, description: "Consumer name" },
       { name: "meterNumber", type: "string", required: false, description: "Meter serial number associated with this asset" },
