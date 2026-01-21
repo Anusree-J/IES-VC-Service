@@ -598,14 +598,6 @@ export async function createCredentialTemplate(
             <span class="footer-label">Issued By</span>
             <span class="footer-value">{{issuerName}}</span>
           </div>
-          <div class="footer-row" style="margin-top: 4px;">
-            <span class="footer-label">Issued On</span>
-            <span class="footer-value">{{issuanceDate}}</span>
-          </div>
-          <div class="footer-row" style="margin-top: 4px;">
-            <span class="footer-label">Credential ID</span>
-            <span class="footer-value" style="font-size: 10px;">{{id}}</span>
-          </div>
         </div>
       </div>
     </body>

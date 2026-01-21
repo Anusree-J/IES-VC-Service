@@ -14,10 +14,10 @@ interface RouteParams {
 // SunbirdRC Handlebar context is flattened to the credentialSubject level
 // Regenerated with: npm run regenerate-templates
 const TEMPLATE_IDS: Record<CredentialType, string> = {
-  CONSUMPTION: "cmkohb3gd0030qf0me4tg6nn1",
-  UTILITY_CUSTOMER: "cmkohb3r90032qf0macbk7xhh",
-  GENERATION: "cmkohb3uc0034qf0m2jucmnfi",
-  STORAGE: "cmkohb3w30036qf0m91zz76qr",
+  CONSUMPTION: "cmkoi3ywn0038qf0mfxbqyzd1",
+  UTILITY_CUSTOMER: "cmkoi3yzo003aqf0mw61yv4mu",
+  GENERATION: "cmkoi3z3s003cqf0mke3jn02a",
+  STORAGE: "cmkoi3z5c003eqf0m3brr2nyc",
 };
 
 
