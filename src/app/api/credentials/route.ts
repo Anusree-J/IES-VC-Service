@@ -177,7 +177,8 @@ export async function POST(request: Request) {
       schemaId,
       subjectId,
       subjectData,
-      credentialType
+      credentialType,
+      issuer.issuerName
     );
 
     console.log("Credential issued:", issuedCredential.credential.id);

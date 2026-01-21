@@ -595,7 +595,11 @@ export async function createCredentialTemplate(
 
         <div class="card-footer">
           <div class="footer-row">
-            <span class="footer-label">Issued</span>
+            <span class="footer-label">Issued By</span>
+            <span class="footer-value">{{issuerName}}</span>
+          </div>
+          <div class="footer-row" style="margin-top: 4px;">
+            <span class="footer-label">Issued On</span>
             <span class="footer-value">{{issuanceDate}}</span>
           </div>
           <div class="footer-row" style="margin-top: 4px;">
@@ -653,6 +657,7 @@ export async function issueCredential(
   subjectId: string,
   credentialSubject: Record<string, unknown>,
   credentialType: CredentialTypeKey,
+  issuerName?: string,
   expirationDate?: string
 ): Promise<IssuedCredential> {
   const contextInfo = CREDENTIAL_CONTEXTS[credentialType];
@@ -670,6 +675,7 @@ export async function issueCredential(
       credentialSubject: {
         id: subjectId,
         type: contextInfo.credentialType,
+        ...(issuerName && { issuerName }),
         ...credentialSubject,
       },
     },
