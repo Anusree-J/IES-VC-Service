@@ -47,7 +47,7 @@ function LoginContent() {
           <div className="mx-auto mb-4 bg-green-600 p-3 rounded-xl w-fit">
             <Zap className="h-8 w-8 text-white" />
           </div>
-          <CardTitle className="text-2xl">IES Energy VC Issuer</CardTitle>
+          <CardTitle className="text-2xl">Open VCs</CardTitle>
           <CardDescription>
             Sign in to issue and manage Verifiable Credentials
           </CardDescription>

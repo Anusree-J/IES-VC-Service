@@ -126,7 +126,7 @@ export default function SetupPage() {
           <CardHeader>
             <CardTitle>Configure Your Issuer Profile</CardTitle>
             <CardDescription>
-              Set up your issuer identity to start issuing IES Energy Verifiable
+              Set up your issuer identity to start issuing Verifiable
               Credentials. This will generate your unique Decentralized
               Identifier (DID) and create the required credential schemas.
             </CardDescription>

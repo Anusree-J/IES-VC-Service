@@ -135,7 +135,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
             Welcome, {user.name?.split(" ")[0] || "User"}
           </h1>
           <p className="text-gray-500 mt-1">
-            Manage and issue IES Energy Verifiable Credentials
+            Manage and issue Verifiable Credentials
           </p>
         </div>
         <div className="text-right">

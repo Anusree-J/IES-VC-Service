@@ -34,7 +34,7 @@ export function Header() {
           <div className="bg-green-600 p-2 rounded-lg">
             <Zap className="h-5 w-5 text-white" />
           </div>
-          <span className="font-semibold text-lg">IES Energy VC Issuer</span>
+          <span className="font-semibold text-lg">Open VCs</span>
         </Link>
 
         {session?.user && (

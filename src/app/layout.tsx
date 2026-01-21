@@ -16,8 +16,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "IES Energy VC Issuer",
-  description: "Issue and manage IES Energy Verifiable Credentials",
+  title: "Open VCs",
+  description: "Issue and manage Verifiable Credentials",
 };
 
 export default function RootLayout({
