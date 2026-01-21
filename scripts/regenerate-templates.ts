@@ -427,7 +427,7 @@ async function createCredentialTemplate(
 
           <div class="qr-section">
             <div class="qr-wrapper">
-              <img class="qr-code" src="{{qrCode}}" alt="Verification QR Code" />
+              <img class="qr-code" src="{{qr}}" alt="Verification QR Code" />
             </div>
             <div class="qr-label">Scan to Verify</div>
             <div class="qr-hint">This credential is cryptographically signed</div>
@@ -445,7 +445,7 @@ async function createCredentialTemplate(
           </div>
           <div class="footer-row" style="margin-top: 4px;">
             <span class="footer-label">Credential ID</span>
-            <span class="footer-value" style="font-size: 10px;">{{credentialId}}</span>
+            <span class="footer-value" style="font-size: 10px;">{{id}}</span>
           </div>
         </div>
       </div>
@@ -507,11 +507,9 @@ async function main() {
 
       console.log(`  📄 Schema ID: ${schemaId}`);
 
-      // Prepare fields for template (include issuerName as it's added during issuance)
-      const schemaFields = [
-        { name: "issuerName", description: "Issued By" },
-        ...config.fields,
-      ];
+      // Prepare fields for template (only credential subject fields, not issuerName)
+      // issuerName is handled separately in the footer via {{issuerName}}
+      const schemaFields = config.fields;
 
       // Create the template
       const templateResponse = await createCredentialTemplate(
