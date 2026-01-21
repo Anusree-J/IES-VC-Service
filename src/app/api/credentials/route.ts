@@ -191,7 +191,7 @@ export async function POST(request: Request) {
       storage: "STORAGE",
     };
 
-    // Store in database
+    // Store in database (include issuerName in subjectData for display)
     const credential = await prisma.credential.create({
       data: {
         issuerId: issuer.id,
@@ -199,7 +199,10 @@ export async function POST(request: Request) {
         credentialType: credentialTypeMap[credentialType],
         subjectId,
         subjectName: subjectData.fullName || null,
-        subjectData,
+        subjectData: {
+          issuerName: issuer.issuerName,
+          ...subjectData,
+        },
         status: "ISSUED",
       },
     });

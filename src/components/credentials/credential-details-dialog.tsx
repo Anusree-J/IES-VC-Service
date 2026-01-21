@@ -35,6 +35,7 @@ const CREDENTIAL_TYPE_LABELS: Record<string, string> = {
 };
 
 const FIELD_LABELS: Record<string, string> = {
+  issuerName: "Issued By",
   consumerNumber: "Consumer Number",
   fullName: "Full Name",
   premisesType: "Premises Type",
@@ -43,14 +44,14 @@ const FIELD_LABELS: Record<string, string> = {
   tariffCategoryCode: "Tariff Category Code",
   meterNumber: "Meter Number",
   maskedIdNumber: "Masked ID Number",
-  installationAddress: "Installation Address",
+  fullAddress: "Full Address",
   serviceConnectionDate: "Service Connection Date",
   generationType: "Generation Type",
   capacityKW: "Capacity (kW)",
   commissioningDate: "Commissioning Date",
   assetId: "Asset ID",
-  equipmentManufacturer: "Equipment Manufacturer",
-  equipmentModel: "Equipment Model",
+  manufacturer: "Manufacturer",
+  modelNumber: "Model Number",
   storageType: "Storage Type",
   storageCapacityKWh: "Storage Capacity (kWh)",
   powerRatingKW: "Power Rating (kW)",

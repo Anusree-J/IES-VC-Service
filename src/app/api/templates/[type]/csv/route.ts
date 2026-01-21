@@ -55,8 +55,8 @@ export async function GET(
           return "MET2026001";
         case "maskedIdNumber":
           return "XXXX-XXXX-1234";
-        case "installationAddress":
-          return "123 Main Street";
+        case "fullAddress":
+          return "123 Main Street, City, State 12345, Country";
         case "serviceConnectionDate":
         case "commissioningDate":
           return "2024-01-15";
@@ -71,9 +71,9 @@ export async function GET(
           return "13.5";
         case "assetId":
           return "ASSET-001";
-        case "equipmentManufacturer":
+        case "manufacturer":
           return "SunPower";
-        case "equipmentModel":
+        case "modelNumber":
           return "Maxeon 6 AC";
         default:
           return "";
@@ -99,8 +99,8 @@ export async function GET(
           return "MET2026002";
         case "maskedIdNumber":
           return "XXXX-XXXX-5678";
-        case "installationAddress":
-          return "456 Business Ave";
+        case "fullAddress":
+          return "456 Business Ave, Town, State 67890, Country";
         case "serviceConnectionDate":
         case "commissioningDate":
           return "2024-03-20";
@@ -115,9 +115,9 @@ export async function GET(
           return "100";
         case "assetId":
           return "ASSET-002";
-        case "equipmentManufacturer":
+        case "manufacturer":
           return "Vestas";
-        case "equipmentModel":
+        case "modelNumber":
           return "V110-2.0";
         default:
           return "";
