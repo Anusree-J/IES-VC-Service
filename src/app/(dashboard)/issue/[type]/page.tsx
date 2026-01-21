@@ -92,6 +92,7 @@ export default function IssuePage() {
   const [issuedCredential, setIssuedCredential] = useState<IssuedCredentialResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"single" | "bulk">("single");
+  const [issuerName, setIssuerName] = useState<string | null>(null);
 
   // Get schema from single source of truth and UI config
   const schema = CREDENTIAL_SCHEMAS[credentialType];
@@ -107,6 +108,22 @@ export default function IssuePage() {
       setFormData(initial);
     }
   }, [credentialType, schema]);
+
+  // Fetch issuer name
+  useEffect(() => {
+    async function fetchIssuer() {
+      try {
+        const response = await fetch("/api/issuer");
+        if (response.ok) {
+          const data = await response.json();
+          setIssuerName(data.issuer?.issuerName || null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch issuer:", error);
+      }
+    }
+    fetchIssuer();
+  }, []);
 
   if (!schema || !uiConfig) {
     return (
@@ -376,6 +393,12 @@ export default function IssuePage() {
               <Badge variant="secondary">{schema.name}</Badge>
             </div>
             <div className="border rounded-lg divide-y">
+              {issuerName && (
+                <div className="flex justify-between px-4 py-2 bg-gray-50">
+                  <span className="text-gray-500">Issued By</span>
+                  <span className="font-medium">{issuerName}</span>
+                </div>
+              )}
               {schema.fields
                 .filter((field) => formData[field.name]?.trim())
                 .map((field) => (
@@ -424,6 +447,12 @@ export default function IssuePage() {
           <div className="space-y-4 py-4">
             {issuedCredential && (
               <>
+                {issuerName && (
+                  <div>
+                    <Label className="text-gray-500">Issued By</Label>
+                    <p className="font-medium">{issuerName}</p>
+                  </div>
+                )}
                 <div>
                   <Label className="text-gray-500">Subject Name</Label>
                   <p className="font-medium">

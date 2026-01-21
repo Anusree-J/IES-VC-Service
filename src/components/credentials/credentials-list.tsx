@@ -388,6 +388,7 @@ export function CredentialsList() {
                     <TableHead>Credential ID</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Subject Name</TableHead>
+                    <TableHead>Issued By</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Issued Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -416,6 +417,7 @@ export function CredentialsList() {
                         </Badge>
                       </TableCell>
                       <TableCell>{credential.subjectName || "-"}</TableCell>
+                      <TableCell>{(credential.subjectData as Record<string, string>)?.issuerName || "-"}</TableCell>
                       <TableCell>
                         <Badge
                           variant={credential.status === "ISSUED" ? "default" : "destructive"}
