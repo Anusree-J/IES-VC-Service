@@ -5,10 +5,12 @@
  * for DID generation, schema management, and credential operations.
  */
 
-const CREDENTIAL_SERVICE_URL = process.env.CREDENTIAL_SERVICE_URL;
-
-if (!CREDENTIAL_SERVICE_URL) {
-  throw new Error("CREDENTIAL_SERVICE_URL environment variable is required");
+function getCredentialServiceUrl(): string {
+  const url = process.env.CREDENTIAL_SERVICE_URL;
+  if (!url) {
+    throw new Error("CREDENTIAL_SERVICE_URL environment variable is required");
+  }
+  return url;
 }
 
 // Types for API responses
@@ -147,7 +149,7 @@ async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${CREDENTIAL_SERVICE_URL}${endpoint}`;
+  const url = `${getCredentialServiceUrl()}${endpoint}`;
 
   const defaultHeaders: Record<string, string> = {
     "Content-Type": "application/json",
@@ -701,7 +703,7 @@ export async function getCredentialHTML(
   credentialId: string,
   templateId: string
 ): Promise<string> {
-  const url = `${CREDENTIAL_SERVICE_URL}/credential/credentials/${credentialId}`;
+  const url = `${getCredentialServiceUrl()}/credential/credentials/${credentialId}`;
 
   const response = await fetch(url, {
     method: "GET",
