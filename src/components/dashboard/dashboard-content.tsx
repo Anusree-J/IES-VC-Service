@@ -14,10 +14,6 @@ import {
   ArrowRight,
   Clock,
   Loader2,
-  ShieldCheck,
-  FileCheck,
-  Users,
-  Activity,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -75,7 +71,7 @@ const credentialTypeConfig = [
     name: "Generation Profile",
     description: "Renewable energy generation systems (prosumers)",
     icon: Sun,
-    color: "bg-amber-500",
+    color: "bg-yellow-500",
   },
   {
     id: "storage",
@@ -83,7 +79,7 @@ const credentialTypeConfig = [
     name: "Storage Profile",
     description: "Battery/energy storage systems",
     icon: Battery,
-    color: "bg-emerald-500",
+    color: "bg-green-500",
   },
 ];
 
@@ -132,123 +128,49 @@ export function DashboardContent({ user }: DashboardContentProps) {
 
   return (
     <div className="space-y-8">
-      {/* Hero Section */}
-      <div className="text-center py-6">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/80 rounded-full text-sm font-medium text-gray-700 mb-4 shadow-sm">
-          <Activity className="h-4 w-4 text-blue-600" />
-          Dashboard
+      {/* Welcome Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome, {user.name?.split(" ")[0] || "User"}
+          </h1>
+          <p className="text-gray-500 mt-1">
+            Manage and issue Verifiable Credentials
+          </p>
         </div>
-        <h1 className="text-3xl md:text-4xl font-bold text-blue-600 mb-2">
-          Welcome, {user.name?.split(" ")[0] || "User"}
-        </h1>
-        <p className="text-gray-600 text-lg">
-          Issue and manage your Verifiable Credentials
-        </p>
+        <div className="text-right">
+          <p className="text-sm text-gray-500">Total Credentials Issued</p>
+          <p className="text-3xl font-bold text-gray-900">
+            {loading ? (
+              <Loader2 className="h-6 w-6 animate-spin inline" />
+            ) : (
+              totalCredentials
+            )}
+          </p>
+        </div>
       </div>
-
-      {/* Stats Cards */}
-      {user.hasIssuer && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="bg-white shadow-sm border-0">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-100 rounded-xl">
-                  <FileCheck className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Total Credentials</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {loading ? (
-                      <Loader2 className="h-5 w-5 animate-spin inline" />
-                    ) : (
-                      totalCredentials
-                    )}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white shadow-sm border-0">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-100 rounded-xl">
-                  <ShieldCheck className="h-6 w-6 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Active</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {loading ? (
-                      <Loader2 className="h-5 w-5 animate-spin inline" />
-                    ) : (
-                      stats?.byStatus.issued ?? 0
-                    )}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white shadow-sm border-0">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-red-100 rounded-xl">
-                  <Clock className="h-6 w-6 text-red-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Revoked</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {loading ? (
-                      <Loader2 className="h-5 w-5 animate-spin inline" />
-                    ) : (
-                      stats?.byStatus.revoked ?? 0
-                    )}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white shadow-sm border-0">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-purple-100 rounded-xl">
-                  <Users className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Credential Types</p>
-                  <p className="text-2xl font-bold text-gray-900">4</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* Issuer Setup Banner (if not set up) */}
       {!user.hasIssuer && (
-        <Card className="border-0 bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg">
-          <CardContent className="py-6">
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="py-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="bg-white/20 p-3 rounded-xl">
-                  <ShieldCheck className="h-6 w-6 text-white" />
+              <div className="flex items-center gap-3">
+                <div className="bg-yellow-100 p-2 rounded-full">
+                  <Zap className="h-5 w-5 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-lg">
+                  <p className="font-medium text-yellow-800">
                     Set up your Issuer Profile
                   </p>
-                  <p className="text-blue-100">
+                  <p className="text-sm text-yellow-600">
                     Generate your DID and configure schemas to start issuing
                     credentials
                   </p>
                 </div>
               </div>
-              <Button
-                asChild
-                className="bg-white text-blue-600 hover:bg-blue-50"
-              >
-                <Link href="/setup">
-                  Complete Setup
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Link>
+              <Button asChild className="bg-yellow-600 hover:bg-yellow-700">
+                <Link href="/setup">Complete Setup</Link>
               </Button>
             </div>
           </CardContent>
@@ -257,11 +179,9 @@ export function DashboardContent({ user }: DashboardContentProps) {
 
       {/* Credential Type Cards */}
       <div>
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Issue Credentials
-          </h2>
-        </div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          Issue Credentials
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {credentialTypeConfig.map((type) => {
             const Icon = type.icon;
@@ -270,21 +190,18 @@ export function DashboardContent({ user }: DashboardContentProps) {
             return (
               <Card
                 key={type.id}
-                className={`bg-white border-0 shadow-sm transition-all ${
+                className={`transition-shadow ${
                   isDisabled
                     ? "opacity-60"
-                    : "hover:shadow-md hover:-translate-y-0.5 cursor-pointer group"
+                    : "hover:shadow-md cursor-pointer group"
                 }`}
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <div className={`${type.color} p-2.5 rounded-xl`}>
+                    <div className={`${type.color} p-2 rounded-lg`}>
                       <Icon className="h-5 w-5 text-white" />
                     </div>
-                    <Badge
-                      variant="secondary"
-                      className="bg-gray-100 text-gray-700"
-                    >
+                    <Badge variant="secondary">
                       {loading ? "..." : count} VCs
                     </Badge>
                   </div>
@@ -296,11 +213,8 @@ export function DashboardContent({ user }: DashboardContentProps) {
                   </p>
                   <Button
                     asChild={!isDisabled}
-                    className={`w-full ${
-                      isDisabled
-                        ? ""
-                        : "bg-blue-600 hover:bg-blue-700 text-white"
-                    }`}
+                    variant="outline"
+                    className="w-full group-hover:bg-gray-50"
                     disabled={isDisabled}
                   >
                     {isDisabled ? (
@@ -325,30 +239,30 @@ export function DashboardContent({ user }: DashboardContentProps) {
       {/* Recent Activity */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-lg font-semibold text-gray-900">
             Recent Activity
           </h2>
-          <Button asChild variant="ghost" size="sm" className="text-blue-600">
+          <Button asChild variant="ghost" size="sm">
             <Link href="/credentials">
               View All
               <ArrowRight className="h-4 w-4 ml-2" />
             </Link>
           </Button>
         </div>
-        <Card className="bg-white border-0 shadow-sm">
+        <Card>
           <CardContent className="p-0">
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y">
               {loading ? (
-                <div className="py-12 text-center text-gray-500">
-                  <Loader2 className="h-8 w-8 mx-auto mb-3 text-blue-500 animate-spin" />
+                <div className="py-8 text-center text-gray-500">
+                  <Loader2 className="h-8 w-8 mx-auto mb-2 text-gray-400 animate-spin" />
                   <p>Loading activity...</p>
                 </div>
               ) : !stats?.recentCredentials ||
                 stats.recentCredentials.length === 0 ? (
-                <div className="py-12 text-center text-gray-500">
-                  <Clock className="h-10 w-10 mx-auto mb-3 text-gray-300" />
-                  <p className="font-medium">No credentials issued yet</p>
-                  <p className="text-sm mt-1">
+                <div className="py-8 text-center text-gray-500">
+                  <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                  <p>No credentials issued yet</p>
+                  <p className="text-sm">
                     {user.hasIssuer
                       ? "Start by issuing your first credential"
                       : "Complete the issuer setup first"}
@@ -358,29 +272,30 @@ export function DashboardContent({ user }: DashboardContentProps) {
                 stats.recentCredentials.map((credential) => (
                   <div
                     key={credential.id}
-                    className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="font-mono text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        {credential.credentialId.split(":").pop()?.slice(0, 8)}
-                        ...
+                      <div className="font-mono text-sm text-gray-600 max-w-[100px] truncate">
+                        {credential.credentialId.split(":").pop()?.slice(0, 8)}...
                       </div>
-                      <Badge
-                        variant="outline"
-                        className="border-blue-200 text-blue-700"
-                      >
+                      <Badge variant="outline">
                         {formatCredentialType(credential.credentialType)}
                       </Badge>
-                      <span className="text-gray-900 font-medium">
+                      <span className="text-gray-900">
                         {credential.subjectName || "Unknown"}
                       </span>
                     </div>
                     <div className="flex items-center gap-4">
                       <Badge
+                        variant={
+                          credential.status === "ISSUED"
+                            ? "default"
+                            : "destructive"
+                        }
                         className={
                           credential.status === "ISSUED"
-                            ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                            : "bg-red-100 text-red-700 hover:bg-red-100"
+                            ? "bg-green-100 text-green-700 hover:bg-green-100"
+                            : ""
                         }
                       >
                         {credential.status.toLowerCase()}
