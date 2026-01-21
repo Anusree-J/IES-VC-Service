@@ -29,8 +29,8 @@ import {
 const credentialTypes = [
   { name: "Consumption Profile", icon: Zap, color: "bg-blue-500" },
   { name: "Utility Customer", icon: User, color: "bg-purple-500" },
-  { name: "Generation Profile", icon: Sun, color: "bg-yellow-500" },
-  { name: "Storage Profile", icon: Battery, color: "bg-green-500" },
+  { name: "Generation Profile", icon: Sun, color: "bg-amber-500" },
+  { name: "Storage Profile", icon: Battery, color: "bg-emerald-500" },
 ];
 
 type SetupStep = "name" | "generating" | "complete";
@@ -119,10 +119,13 @@ export default function SetupPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Issuer Setup</h1>
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-blue-600 mb-2">Issuer Setup</h1>
+        <p className="text-gray-600">Configure your organization to start issuing credentials</p>
+      </div>
 
       {step === "name" && (
-        <Card>
+        <Card className="bg-white border-0 shadow-lg">
           <CardHeader>
             <CardTitle>Configure Your Issuer Profile</CardTitle>
             <CardDescription>
@@ -179,7 +182,7 @@ export default function SetupPage() {
               </div>
             )}
 
-            <Button onClick={handleSetup} className="w-full sm:w-auto">
+            <Button onClick={handleSetup} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
               <Key className="h-4 w-4 mr-2" />
               Generate DID & Create Schemas
             </Button>
@@ -188,7 +191,7 @@ export default function SetupPage() {
       )}
 
       {step === "generating" && (
-        <Card>
+        <Card className="bg-white border-0 shadow-lg">
           <CardHeader>
             <CardTitle>Setting Up Your Issuer Profile</CardTitle>
             <CardDescription>
@@ -257,7 +260,7 @@ export default function SetupPage() {
       )}
 
       {step === "complete" && result && (
-        <Card className="border-green-200">
+        <Card className="bg-white border-0 shadow-lg border-t-4 border-t-emerald-500">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="bg-green-100 p-2 rounded-full">

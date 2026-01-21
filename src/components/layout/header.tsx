@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Zap, LogOut, Settings, Shield, ShieldCheck } from "lucide-react";
+import { LogOut, Settings, Shield, ShieldCheck } from "lucide-react";
 
 export function Header() {
   const { data: session } = useSession();
@@ -28,13 +28,11 @@ export function Header() {
   };
 
   return (
-    <header className="border-b bg-white">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+    <header className="h-16 bg-[#FFF8E7] border-b border-[#E8E0D0]">
+      <div className="container mx-auto px-4 h-full flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <div className="bg-green-600 p-2 rounded-lg">
-            <Zap className="h-5 w-5 text-white" />
-          </div>
-          <span className="font-semibold text-lg">Open VCs</span>
+          <ShieldCheck className="h-6 w-6 text-blue-600" />
+          <span className="font-semibold text-lg text-gray-900">Open VCs</span>
         </Link>
 
         {session?.user && (
@@ -80,7 +78,7 @@ export function Header() {
                       src={session.user.image || undefined}
                       alt={session.user.name || "User"}
                     />
-                    <AvatarFallback className="bg-green-100 text-green-700">
+                    <AvatarFallback className="bg-blue-100 text-blue-700">
                       {getInitials(session.user.name)}
                     </AvatarFallback>
                   </Avatar>
