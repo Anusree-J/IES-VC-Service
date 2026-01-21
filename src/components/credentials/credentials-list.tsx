@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import JSZip from "jszip";
 import {
   Table,
   TableBody,
@@ -86,6 +87,10 @@ export function CredentialsList() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -181,29 +186,88 @@ export function CredentialsList() {
     }
   };
 
-  const handleDownloadPDF = async (credential: Credential) => {
-    try {
-      const response = await fetch(`/api/credentials/${credential.id}/pdf`);
-      if (!response.ok) throw new Error("Failed to download PDF");
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `credential-${credential.credentialId.split(":").pop()}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("PDF download failed:", err);
-    }
+  const handleDownloadPDF = (credential: Credential) => {
+    // Open in new tab - user can print/save as PDF from there
+    window.open(`/api/credentials/${credential.id}/pdf`, "_blank");
   };
 
   const handleRevokeSuccess = () => {
     setRevokeOpen(false);
     setSelectedCredential(null);
     fetchCredentials();
+  };
+
+  // Selection handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(credentials.map((c) => c.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds);
+    if (checked) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const isAllSelected = credentials.length > 0 && selectedIds.size === credentials.length;
+  const isSomeSelected = selectedIds.size > 0 && selectedIds.size < credentials.length;
+
+  // Bulk download handler
+  const handleBulkDownload = async (format: "json" | "pdf") => {
+    if (selectedIds.size === 0) return;
+
+    setIsDownloading(true);
+    const zip = new JSZip();
+
+    try {
+      const selectedCredentials = credentials.filter((c) => selectedIds.has(c.id));
+
+      for (const credential of selectedCredentials) {
+        try {
+          if (format === "json") {
+            const response = await fetch(`/api/credentials/${credential.id}/json`);
+            if (response.ok) {
+              const data = await response.json();
+              const filename = `credential-${credential.credentialId.split(":").pop()}.json`;
+              zip.file(filename, JSON.stringify(data, null, 2));
+            }
+          } else {
+            const response = await fetch(`/api/credentials/${credential.id}/pdf`);
+            if (response.ok) {
+              const blob = await response.blob();
+              const filename = `credential-${credential.credentialId.split(":").pop()}.pdf`;
+              zip.file(filename, blob);
+            }
+          }
+        } catch (err) {
+          console.error(`Failed to fetch credential ${credential.id}:`, err);
+        }
+      }
+
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `credentials-${format}-${new Date().toISOString().split("T")[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Clear selection after download
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error("Bulk download failed:", err);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -224,7 +288,38 @@ export function CredentialsList() {
       {/* Filters */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Filters</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Filters</CardTitle>
+            {selectedIds.size > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button disabled={isDownloading} size="sm">
+                    {isDownloading ? (
+                      <>
+                        <LoaderIcon className="h-4 w-4 mr-2 animate-spin" />
+                        Downloading...
+                      </>
+                    ) : (
+                      <>
+                        <DownloadIcon className="h-4 w-4 mr-2" />
+                        Download Selected ({selectedIds.size})
+                      </>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleBulkDownload("json")}>
+                    <DownloadIcon className="mr-2 h-4 w-4" />
+                    Download as JSON
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleBulkDownload("pdf")}>
+                    <FileTextIcon className="mr-2 h-4 w-4" />
+                    Download as PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4">
@@ -279,6 +374,17 @@ export function CredentialsList() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = isSomeSelected;
+                        }}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                    </TableHead>
                     <TableHead>Credential ID</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Subject Name</TableHead>
@@ -289,7 +395,15 @@ export function CredentialsList() {
                 </TableHeader>
                 <TableBody>
                   {credentials.map((credential) => (
-                    <TableRow key={credential.id}>
+                    <TableRow key={credential.id} className={selectedIds.has(credential.id) ? "bg-blue-50" : ""}>
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(credential.id)}
+                          onChange={(e) => handleSelectOne(credential.id, e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                      </TableCell>
                       <TableCell className="font-mono text-sm">
                         {truncateId(credential.credentialId)}
                       </TableCell>
@@ -486,6 +600,14 @@ function XCircleIcon({ className }: { className?: string }) {
       <circle cx="12" cy="12" r="10" />
       <line x1="15" y1="9" x2="9" y2="15" />
       <line x1="9" y1="9" x2="15" y2="15" />
+    </svg>
+  );
+}
+
+function LoaderIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
   );
 }

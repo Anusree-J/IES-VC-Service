@@ -44,11 +44,16 @@ export async function GET(request: Request, { params }: RouteParams) {
     try {
       const verificationResult = await verifyCredential(credential.credentialId);
 
+      const proofValid = verificationResult.checks?.proof ?? true;
+      const statusValid = credential.status === "ISSUED" && (verificationResult.checks?.status ?? true);
+      const isVerified = credential.status === "ISSUED" && proofValid && statusValid;
+
       return NextResponse.json({
+        verified: isVerified,
         status: credential.status,
         checks: {
-          proof: verificationResult.checks?.proof ?? true,
-          status: credential.status === "ISSUED" && (verificationResult.checks?.status ?? true),
+          proof: proofValid,
+          status: statusValid,
         },
         sunbirdResult: verificationResult,
       });
@@ -56,11 +61,13 @@ export async function GET(request: Request, { params }: RouteParams) {
       console.error("Failed to verify with SunbirdRC:", err);
 
       // Return local status if SunbirdRC is unavailable
+      const isVerified = credential.status === "ISSUED";
       return NextResponse.json({
+        verified: isVerified,
         status: credential.status,
         checks: {
           proof: true, // Assume proof is valid if we can't verify
-          status: credential.status === "ISSUED",
+          status: isVerified,
         },
         _note: "Verification performed using local data - SunbirdRC service unavailable",
       });

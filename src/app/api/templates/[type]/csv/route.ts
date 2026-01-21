@@ -30,8 +30,10 @@ export async function GET(
 
     const schemaConfig = CREDENTIAL_SCHEMAS[credentialType];
 
-    // Build CSV header from field names
-    const headers = schemaConfig.fields.map((field) => field.name);
+    // Build CSV header from field names with required/optional indicator
+    const headers = schemaConfig.fields.map((field) =>
+      field.required ? `${field.name} (required)` : `${field.name} (optional)`
+    );
 
     // Create example row with sample data
     const exampleRow = schemaConfig.fields.map((field) => {

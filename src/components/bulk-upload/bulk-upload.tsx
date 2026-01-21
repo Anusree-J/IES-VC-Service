@@ -83,11 +83,16 @@ export function BulkUpload({ credentialType, fields }: BulkUploadProps) {
 
     // Parse header
     const headerLine = lines[0];
-    const headers = parseCSVLine(headerLine);
+    const rawHeaders = parseCSVLine(headerLine);
 
-    // Validate headers
-    const fieldNames = fields.map((f) => f.name);
-    const missingHeaders = fieldNames.filter((name) => !headers.includes(name));
+    // Normalize headers by stripping (required) and (optional) suffixes
+    const headers = rawHeaders.map((h) =>
+      h.replace(/\s*\((required|optional)\)\s*$/i, "").trim()
+    );
+
+    // Validate headers - check for required fields only
+    const requiredFieldNames = fields.filter((f) => f.required).map((f) => f.name);
+    const missingHeaders = requiredFieldNames.filter((name) => !headers.includes(name));
     if (missingHeaders.length > 0) {
       throw new Error(`Missing required columns: ${missingHeaders.join(", ")}`);
     }

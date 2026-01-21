@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const CREDENTIAL_SERVICE_URL = process.env.CREDENTIAL_SERVICE_URL || "http://35.244.45.209";
+  const CREDENTIAL_SERVICE_URL = process.env.CREDENTIAL_SERVICE_URL;
 
-  console.log("=== TEST CONNECTION ===");
-  console.log("CREDENTIAL_SERVICE_URL from env:", process.env.CREDENTIAL_SERVICE_URL);
-  console.log("Using URL:", CREDENTIAL_SERVICE_URL);
+  if (!CREDENTIAL_SERVICE_URL) {
+    return NextResponse.json({
+      success: false,
+      error: "CREDENTIAL_SERVICE_URL environment variable is not configured"
+    }, { status: 500 });
+  }
 
   try {
     const url = `${CREDENTIAL_SERVICE_URL}/identity/did/generate`;

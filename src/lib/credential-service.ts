@@ -5,8 +5,11 @@
  * for DID generation, schema management, and credential operations.
  */
 
-const CREDENTIAL_SERVICE_URL = process.env.CREDENTIAL_SERVICE_URL || "http://35.244.45.209";
-console.log("[credential-service] Using CREDENTIAL_SERVICE_URL:", CREDENTIAL_SERVICE_URL);
+const CREDENTIAL_SERVICE_URL = process.env.CREDENTIAL_SERVICE_URL;
+
+if (!CREDENTIAL_SERVICE_URL) {
+  throw new Error("CREDENTIAL_SERVICE_URL environment variable is required");
+}
 
 // Types for API responses
 export interface GenerateDIDResponse {
@@ -145,8 +148,6 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${CREDENTIAL_SERVICE_URL}${endpoint}`;
-  console.log("[credential-service] Making request to:", url);
-  console.log("[credential-service] Request options:", JSON.stringify(options, null, 2));
 
   const defaultHeaders: Record<string, string> = {
     "Content-Type": "application/json",
@@ -161,8 +162,6 @@ async function apiRequest<T>(
       },
     });
 
-    console.log("[credential-service] Response status:", response.status, response.statusText);
-
     if (!response.ok) {
       let errorData;
       try {
@@ -170,7 +169,9 @@ async function apiRequest<T>(
       } catch {
         errorData = await response.text();
       }
-      console.log("[credential-service] Error response:", errorData);
+      if (process.env.NODE_ENV === "development") {
+        console.error("[credential-service] Error response:", errorData);
+      }
       throw new CredentialServiceError(
         `API request failed: ${response.statusText}`,
         response.status,
@@ -180,22 +181,21 @@ async function apiRequest<T>(
 
     return handleSuccessResponse<T>(response);
   } catch (error) {
-    console.error("[credential-service] Fetch error:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[credential-service] Fetch error:", error);
+    }
     throw error;
   }
 }
 
 async function handleSuccessResponse<T>(response: Response): Promise<T> {
-
   // Handle PDF responses
   const contentType = response.headers.get("content-type");
   if (contentType?.includes("application/pdf")) {
     return response.blob() as unknown as T;
   }
 
-  const jsonResponse = await response.json();
-  console.log("[credential-service] Success response:", JSON.stringify(jsonResponse, null, 2));
-  return jsonResponse;
+  return response.json();
 }
 
 /**
@@ -265,6 +265,51 @@ export async function createCredentialSchema(
   return response.schema;
 }
 
+// Template configurations for each credential type
+interface TemplateConfig {
+  title: string;
+  icon: string;
+  gradientFrom: string;
+  gradientTo: string;
+  accentColor: string;
+  keyFields: string[];
+}
+
+const TEMPLATE_CONFIGS: Record<string, TemplateConfig> = {
+  "Consumption Profile Credential": {
+    title: "Energy Consumption Profile",
+    icon: "⚡",
+    gradientFrom: "#667eea",
+    gradientTo: "#764ba2",
+    accentColor: "#667eea",
+    keyFields: ["fullName", "consumerNumber", "sanctionedLoadKW"],
+  },
+  "Utility Customer Credential": {
+    title: "Utility Customer",
+    icon: "🏠",
+    gradientFrom: "#11998e",
+    gradientTo: "#38ef7d",
+    accentColor: "#11998e",
+    keyFields: ["fullName", "consumerNumber", "installationAddress"],
+  },
+  "Generation Profile Credential": {
+    title: "Energy Generation Profile",
+    icon: "☀️",
+    gradientFrom: "#f093fb",
+    gradientTo: "#f5576c",
+    accentColor: "#f5576c",
+    keyFields: ["fullName", "generationType", "capacityKW"],
+  },
+  "Storage Profile Credential": {
+    title: "Energy Storage Profile",
+    icon: "🔋",
+    gradientFrom: "#4facfe",
+    gradientTo: "#00f2fe",
+    accentColor: "#4facfe",
+    keyFields: ["fullName", "storageType", "storageCapacityKWh"],
+  },
+};
+
 /**
  * Create a PDF template for a credential schema
  */
@@ -273,51 +318,289 @@ export async function createCredentialTemplate(
   templateName: string,
   schemaFields: Array<{ name: string; description: string }>
 ): Promise<TemplateResponse> {
-  // Generate a simple HTML template for the credential
-  const fieldsHtml = schemaFields
+  const config = TEMPLATE_CONFIGS[templateName] || {
+    title: templateName,
+    icon: "📜",
+    gradientFrom: "#667eea",
+    gradientTo: "#764ba2",
+    accentColor: "#667eea",
+    keyFields: schemaFields.slice(0, 3).map(f => f.name),
+  };
+
+  // Separate key fields from other fields
+  const keyFieldsData = schemaFields.filter(f => config.keyFields.includes(f.name));
+  const otherFields = schemaFields.filter(f => !config.keyFields.includes(f.name));
+
+  // Generate key fields HTML (prominent display)
+  const keyFieldsHtml = keyFieldsData
     .map(
       (field) => `
-      <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: 500;">${field.description}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee;">{{${field.name}}}</td>
-      </tr>
+      <div class="key-field">
+        <div class="key-label">${field.description}</div>
+        <div class="key-value">{{${field.name}}}</div>
+      </div>
     `
     )
     .join("");
+
+  // Generate other fields HTML (compact table)
+  const otherFieldsHtml = otherFields.length > 0
+    ? otherFields.map(
+        (field) => `
+        <div class="detail-row">
+          <span class="detail-label">${field.description}</span>
+          <span class="detail-value">{{${field.name}}}</span>
+        </div>
+      `
+      ).join("")
+    : "";
 
   const template = `
     <!DOCTYPE html>
     <html>
     <head>
       <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .title { font-size: 24px; font-weight: bold; color: #1a365d; }
-        .subtitle { font-size: 14px; color: #4a5568; margin-top: 8px; }
-        .credential-box { border: 2px solid #3182ce; border-radius: 8px; padding: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        .qr-section { text-align: center; margin-top: 30px; }
-        .qr-code { width: 150px; height: 150px; }
-        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #718096; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: #f8fafc;
+          min-height: 100vh;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 20px;
+        }
+
+        .credential-card {
+          width: 100%;
+          max-width: 420px;
+          background: white;
+          border-radius: 24px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+          overflow: hidden;
+        }
+
+        .card-header {
+          background: linear-gradient(135deg, ${config.gradientFrom} 0%, ${config.gradientTo} 100%);
+          padding: 28px 24px;
+          text-align: center;
+          position: relative;
+        }
+
+        .card-header::after {
+          content: '';
+          position: absolute;
+          bottom: -20px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 40px;
+          height: 40px;
+          background: white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .header-icon {
+          font-size: 32px;
+          margin-bottom: 12px;
+        }
+
+        .header-title {
+          color: white;
+          font-size: 20px;
+          font-weight: 700;
+          letter-spacing: -0.5px;
+        }
+
+        .header-subtitle {
+          color: rgba(255, 255, 255, 0.85);
+          font-size: 12px;
+          font-weight: 500;
+          margin-top: 6px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .card-body {
+          padding: 36px 24px 24px;
+        }
+
+        .key-fields {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .key-field {
+          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+          border-radius: 12px;
+          padding: 16px;
+          border-left: 4px solid ${config.accentColor};
+        }
+
+        .key-label {
+          font-size: 11px;
+          font-weight: 600;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 4px;
+        }
+
+        .key-value {
+          font-size: 16px;
+          font-weight: 600;
+          color: #1e293b;
+          word-break: break-word;
+        }
+
+        .details-section {
+          border-top: 1px solid #e2e8f0;
+          padding-top: 16px;
+          margin-bottom: 24px;
+        }
+
+        .details-title {
+          font-size: 11px;
+          font-weight: 600;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 12px;
+        }
+
+        .detail-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 0;
+          border-bottom: 1px solid #f1f5f9;
+        }
+
+        .detail-row:last-child {
+          border-bottom: none;
+        }
+
+        .detail-label {
+          font-size: 13px;
+          color: #64748b;
+        }
+
+        .detail-value {
+          font-size: 13px;
+          font-weight: 500;
+          color: #334155;
+          text-align: right;
+          max-width: 60%;
+          word-break: break-word;
+        }
+
+        .qr-section {
+          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+          border-radius: 16px;
+          padding: 20px;
+          text-align: center;
+        }
+
+        .qr-wrapper {
+          background: white;
+          border-radius: 12px;
+          padding: 12px;
+          display: inline-block;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .qr-code {
+          width: 140px;
+          height: 140px;
+          display: block;
+        }
+
+        .qr-label {
+          margin-top: 12px;
+          font-size: 12px;
+          font-weight: 500;
+          color: #64748b;
+        }
+
+        .qr-hint {
+          font-size: 11px;
+          color: #94a3b8;
+          margin-top: 4px;
+        }
+
+        .card-footer {
+          background: #f8fafc;
+          padding: 16px 24px;
+          border-top: 1px solid #e2e8f0;
+        }
+
+        .footer-row {
+          display: flex;
+          justify-content: space-between;
+          font-size: 11px;
+          color: #94a3b8;
+        }
+
+        .footer-label {
+          font-weight: 500;
+        }
+
+        .footer-value {
+          color: #64748b;
+        }
+
       </style>
     </head>
     <body>
-      <div class="header">
-        <div class="title">IES Energy Verifiable Credential</div>
-        <div class="subtitle">${templateName}</div>
-      </div>
-      <div class="credential-box">
-        <table>
-          ${fieldsHtml}
-        </table>
-      </div>
-      <div class="qr-section">
-        <img class="qr-code" src="{{qrCode}}" alt="QR Code" />
-        <p style="font-size: 12px; color: #718096;">Scan to verify this credential</p>
-      </div>
-      <div class="footer">
-        <p>Issued on: {{issuanceDate}}</p>
-        <p>Credential ID: {{credentialId}}</p>
+      <div class="credential-card">
+        <div class="card-header">
+          <div class="header-icon">${config.icon}</div>
+          <div class="header-title">${config.title}</div>
+          <div class="header-subtitle">Verifiable Credential</div>
+        </div>
+
+        <div class="card-body">
+          <div class="key-fields">
+            ${keyFieldsHtml}
+          </div>
+
+          ${otherFields.length > 0 ? `
+          <div class="details-section">
+            <div class="details-title">Additional Details</div>
+            ${otherFieldsHtml}
+          </div>
+          ` : ""}
+
+          <div class="qr-section">
+            <div class="qr-wrapper">
+              <img class="qr-code" src="{{qrCode}}" alt="Verification QR Code" />
+            </div>
+            <div class="qr-label">Scan to Verify</div>
+            <div class="qr-hint">This credential is cryptographically signed</div>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <div class="footer-row">
+            <span class="footer-label">Issued</span>
+            <span class="footer-value">{{issuanceDate}}</span>
+          </div>
+          <div class="footer-row" style="margin-top: 4px;">
+            <span class="footer-label">Credential ID</span>
+            <span class="footer-value" style="font-size: 10px;">{{credentialId}}</span>
+          </div>
+        </div>
       </div>
     </body>
     </html>
@@ -412,19 +695,37 @@ export async function getCredential(credentialId: string): Promise<IssuedCredent
 }
 
 /**
- * Get a credential as PDF
+ * Get a credential as rendered HTML using a template
  */
-export async function getCredentialPDF(
+export async function getCredentialHTML(
   credentialId: string,
   templateId: string
-): Promise<Blob> {
-  return apiRequest<Blob>(`/credential/credentials/${credentialId}`, {
+): Promise<string> {
+  const url = `${CREDENTIAL_SERVICE_URL}/credential/credentials/${credentialId}`;
+
+  const response = await fetch(url, {
     method: "GET",
     headers: {
-      Accept: "application/pdf",
-      templateId,
+      Accept: "text/html",
+      templateId: templateId,
     },
   });
+
+  if (!response.ok) {
+    let errorData;
+    try {
+      errorData = await response.text();
+    } catch {
+      errorData = response.statusText;
+    }
+    throw new CredentialServiceError(
+      `Failed to fetch rendered credential: ${response.statusText}`,
+      response.status,
+      errorData
+    );
+  }
+
+  return response.text();
 }
 
 /**

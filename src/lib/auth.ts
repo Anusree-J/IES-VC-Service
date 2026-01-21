@@ -16,7 +16,6 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user }) {
       // Check if user email is in the allowed list
       if (!user.email) {
-        console.log("[Auth] No email provided");
         return false;
       }
 
@@ -25,17 +24,11 @@ export const authOptions: NextAuthOptions = {
         e.trim().toLowerCase()
       ) || [];
 
-      console.log("[Auth] User email:", user.email.toLowerCase());
-      console.log("[Auth] Admin emails:", adminEmails);
-      console.log("[Auth] Is admin:", adminEmails.includes(user.email.toLowerCase()));
-
       if (adminEmails.includes(user.email.toLowerCase())) {
-        console.log("[Auth] Admin approved, returning true");
         return true;
       }
 
       // Check if user is in the allowed users list
-      console.log("[Auth] Not admin, checking allowed users list");
       const allowedUser = await prisma.allowedUser.findUnique({
         where: { email: user.email.toLowerCase() },
       });
@@ -82,5 +75,5 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
-  debug: true,
+  debug: process.env.NODE_ENV === "development",
 };
