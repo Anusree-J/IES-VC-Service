@@ -95,7 +95,7 @@ export const CREDENTIAL_SCHEMAS: Record<CredentialTypeKey, {
     name: "Utility Customer Credential",
     schemaName: "UtilityCustomer",
     fields: [
-      { name: "consumerNumber", type: "string", required: true, description: "Full consumer account number assigned by the utility" },
+      { name: "consumerNumber", type: "string", required: true, description: "Consumer number" },
       { name: "maskedIdNumber", type: "string", required: false, description: "Masked government ID (e.g., driving license, national ID)" },
       { name: "fullName", type: "string", required: true, description: "Full name as per ID proof" },
       { name: "fullAddress", type: "string", required: true, description: "Complete address (street, city, state, postal code, country)" },
