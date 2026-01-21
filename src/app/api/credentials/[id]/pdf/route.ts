@@ -10,13 +10,14 @@ interface RouteParams {
 }
 
 // Pre-created template IDs from SunbirdRC - these are fixed and shared across all issuers
-// Templates use flat field paths (e.g., {{fullName}}, {{qr}}) because SunbirdRC Handlebar
-// context is flattened to the credentialSubject level, not the root credential level
+// Templates use flat field paths (e.g., {{fullName}}, {{qrCode}}, {{issuerName}}) because
+// SunbirdRC Handlebar context is flattened to the credentialSubject level
+// Regenerated with: npm run regenerate-templates
 const TEMPLATE_IDS: Record<CredentialType, string> = {
-  CONSUMPTION: "cmknlcflr001qqf0mzv1pooxe",
-  UTILITY_CUSTOMER: "cmknldlhd001sqf0mwe5iw1z3",
-  GENERATION: "cmknle2dp001uqf0mnxkwrva0",
-  STORAGE: "cmknlem37001wqf0mnectuq9t",
+  CONSUMPTION: "cmkogve57002sqf0mlpmqx7zp",
+  UTILITY_CUSTOMER: "cmkogve9p002uqf0mvbjdgp9a",
+  GENERATION: "cmkogveb7002wqf0m14pi63ag",
+  STORAGE: "cmkogvecp002yqf0m06c5inrw",
 };
 
 
