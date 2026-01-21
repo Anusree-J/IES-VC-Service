@@ -43,87 +43,30 @@ import {
 } from "lucide-react";
 import { BulkUpload } from "@/components/bulk-upload";
 import { useToast } from "@/hooks/use-toast";
+import { CREDENTIAL_SCHEMAS, CredentialTypeKey } from "@/lib/credential-service";
 
-type CredentialType = "consumption" | "utility_customer" | "generation" | "storage";
+type CredentialType = CredentialTypeKey;
 
-interface FieldConfig {
-  name: string;
-  type: string;
-  required: boolean;
-  description: string;
-  options?: string[];
-}
-
-interface CredentialTypeConfig {
-  name: string;
-  schemaName: string;
-  fields: FieldConfig[];
+// UI-specific configuration (icon and color) - fields come from CREDENTIAL_SCHEMAS
+const credentialUIConfig: Record<CredentialType, {
   icon: React.ComponentType<{ className?: string }>;
   color: string;
-}
-
-const credentialConfigs: Record<CredentialType, CredentialTypeConfig> = {
+}> = {
   consumption: {
-    name: "Consumption Profile Credential",
-    schemaName: "EnergyConsumptionProfile",
     icon: Zap,
     color: "bg-blue-500",
-    fields: [
-      { name: "consumerNumber", type: "string", required: true, description: "Unique consumer identifier" },
-      { name: "fullName", type: "string", required: true, description: "Consumer full name" },
-      { name: "premisesType", type: "string", required: false, description: "Premises type", options: ["Residential", "Commercial", "Industrial"] },
-      { name: "connectionType", type: "string", required: false, description: "Connection type", options: ["Single Phase", "Three Phase"] },
-      { name: "sanctionedLoadKW", type: "string", required: false, description: "Sanctioned load in kilowatts" },
-      { name: "tariffCategoryCode", type: "string", required: false, description: "Tariff category code" },
-      { name: "meterNumber", type: "string", required: false, description: "Meter serial number" },
-    ],
   },
   utility_customer: {
-    name: "Utility Customer Credential",
-    schemaName: "UtilityCustomer",
     icon: User,
     color: "bg-purple-500",
-    fields: [
-      { name: "consumerNumber", type: "string", required: true, description: "Unique consumer identifier" },
-      { name: "fullName", type: "string", required: true, description: "Customer full name" },
-      { name: "maskedIdNumber", type: "string", required: false, description: "Masked government ID" },
-      { name: "installationAddress", type: "string", required: false, description: "Service installation address" },
-      { name: "meterNumber", type: "string", required: false, description: "Meter serial number" },
-      { name: "serviceConnectionDate", type: "string", required: false, description: "Date of service connection (YYYY-MM-DD)" },
-    ],
   },
   generation: {
-    name: "Generation Profile Credential",
-    schemaName: "EnergyGenerationProfile",
     icon: Sun,
     color: "bg-yellow-500",
-    fields: [
-      { name: "consumerNumber", type: "string", required: true, description: "Prosumer identifier" },
-      { name: "fullName", type: "string", required: true, description: "Prosumer full name" },
-      { name: "generationType", type: "string", required: true, description: "Type of generation", options: ["Solar PV", "Wind", "Hydro", "Biomass", "Other"] },
-      { name: "capacityKW", type: "string", required: false, description: "Generation capacity in kW" },
-      { name: "commissioningDate", type: "string", required: false, description: "Date of commissioning (YYYY-MM-DD)" },
-      { name: "meterNumber", type: "string", required: false, description: "Generation meter number" },
-      { name: "assetId", type: "string", required: false, description: "Unique asset identifier" },
-      { name: "equipmentManufacturer", type: "string", required: false, description: "Equipment manufacturer" },
-      { name: "equipmentModel", type: "string", required: false, description: "Equipment model" },
-    ],
   },
   storage: {
-    name: "Storage Profile Credential",
-    schemaName: "EnergyStorageProfile",
     icon: Battery,
     color: "bg-green-500",
-    fields: [
-      { name: "consumerNumber", type: "string", required: true, description: "Consumer identifier" },
-      { name: "fullName", type: "string", required: true, description: "Owner full name" },
-      { name: "storageType", type: "string", required: true, description: "Type of storage", options: ["Lithium-Ion Battery", "Lead-Acid Battery", "Flow Battery", "Other"] },
-      { name: "storageCapacityKWh", type: "string", required: false, description: "Storage capacity in kWh" },
-      { name: "powerRatingKW", type: "string", required: false, description: "Power rating in kW" },
-      { name: "commissioningDate", type: "string", required: false, description: "Date of commissioning (YYYY-MM-DD)" },
-      { name: "meterNumber", type: "string", required: false, description: "Storage meter number" },
-      { name: "assetId", type: "string", required: false, description: "Unique asset identifier" },
-    ],
   },
 };
 
@@ -150,20 +93,22 @@ export default function IssuePage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"single" | "bulk">("single");
 
-  const config = credentialConfigs[credentialType];
+  // Get schema from single source of truth and UI config
+  const schema = CREDENTIAL_SCHEMAS[credentialType];
+  const uiConfig = credentialUIConfig[credentialType];
 
   useEffect(() => {
     // Initialize form data with empty strings
-    if (config) {
+    if (schema) {
       const initial: Record<string, string> = {};
-      config.fields.forEach((field) => {
+      schema.fields.forEach((field) => {
         initial[field.name] = "";
       });
       setFormData(initial);
     }
-  }, [credentialType]);
+  }, [credentialType, schema]);
 
-  if (!config) {
+  if (!schema || !uiConfig) {
     return (
       <div className="max-w-2xl mx-auto text-center py-12">
         <AlertCircle className="h-12 w-12 mx-auto text-red-500 mb-4" />
@@ -180,7 +125,7 @@ export default function IssuePage() {
     );
   }
 
-  const Icon = config.icon;
+  const Icon = uiConfig.icon;
 
   const handleInputChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -197,7 +142,7 @@ export default function IssuePage() {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    config.fields.forEach((field) => {
+    schema.fields.forEach((field) => {
       if (field.required && !formData[field.name]?.trim()) {
         newErrors[field.name] = `${field.description} is required`;
       }
@@ -258,7 +203,7 @@ export default function IssuePage() {
 
   const resetForm = () => {
     const initial: Record<string, string> = {};
-    config.fields.forEach((field) => {
+    schema.fields.forEach((field) => {
       initial[field.name] = "";
     });
     setFormData(initial);
@@ -278,12 +223,12 @@ export default function IssuePage() {
           </Link>
         </Button>
         <div className="flex items-center gap-3">
-          <div className={`${config.color} p-3 rounded-lg`}>
+          <div className={`${uiConfig.color} p-3 rounded-lg`}>
             <Icon className="h-6 w-6 text-white" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Issue {config.name}
+              Issue {schema.name}
             </h1>
             <p className="text-gray-500">
               Fill in the details to issue a new credential
@@ -338,7 +283,7 @@ export default function IssuePage() {
             )}
 
             <div className="grid gap-4">
-              {config.fields.map((field) => (
+              {schema.fields.map((field) => (
                 <div key={field.name} className="space-y-2">
                   <Label htmlFor={field.name}>
                     {field.description}
@@ -359,7 +304,7 @@ export default function IssuePage() {
                         <SelectValue placeholder={`Select ${field.description.toLowerCase()}`} />
                       </SelectTrigger>
                       <SelectContent>
-                        {field.options.map((option) => (
+                        {field.options.map((option: string) => (
                           <SelectItem key={option} value={option}>
                             {option}
                           </SelectItem>
@@ -408,7 +353,7 @@ export default function IssuePage() {
           <CardContent>
             <BulkUpload
               credentialType={credentialType}
-              fields={config.fields}
+              fields={schema.fields}
             />
           </CardContent>
         </Card>
@@ -425,13 +370,13 @@ export default function IssuePage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="flex items-center gap-2 mb-4">
-              <div className={`${config.color} p-2 rounded`}>
+              <div className={`${uiConfig.color} p-2 rounded`}>
                 <Icon className="h-4 w-4 text-white" />
               </div>
-              <Badge variant="secondary">{config.name}</Badge>
+              <Badge variant="secondary">{schema.name}</Badge>
             </div>
             <div className="border rounded-lg divide-y">
-              {config.fields
+              {schema.fields
                 .filter((field) => formData[field.name]?.trim())
                 .map((field) => (
                   <div
