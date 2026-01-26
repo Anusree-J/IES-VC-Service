@@ -237,16 +237,14 @@ export function CredentialsList() {
       if (format === "pdf") {
         html2pdfModule = (await import("html2pdf.js")).default;
 
-        // Create a hidden container for PDF rendering
-        // Use fixed positioning with negative z-index to avoid any visual flicker
+        // Create a container for PDF rendering positioned off-screen
+        // Must be visible (opacity: 1) for html2canvas to capture content properly
         pdfContainer = document.createElement("div");
         pdfContainer.style.cssText = `
           position: fixed;
-          left: 0;
+          left: -9999px;
           top: 0;
           width: 210mm;
-          z-index: -9999;
-          opacity: 0;
           pointer-events: none;
           background: white;
         `;
