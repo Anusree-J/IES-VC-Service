@@ -232,24 +232,48 @@ export function CredentialsList() {
       // Dynamically import html2pdf only when needed for PDF downloads
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let html2pdfModule: any = null;
-      let pdfIframe: HTMLIFrameElement | null = null;
+      let pdfContainer: HTMLDivElement | null = null;
 
       if (format === "pdf") {
         html2pdfModule = (await import("html2pdf.js")).default;
 
-        // Create ONE hidden iframe for all PDFs - positioned completely off-screen
-        pdfIframe = document.createElement("iframe");
-        pdfIframe.style.cssText = `
-          position: absolute;
-          left: -99999px;
+        // Create a hidden container for PDF rendering
+        // Use fixed positioning with negative z-index to avoid any visual flicker
+        pdfContainer = document.createElement("div");
+        pdfContainer.style.cssText = `
+          position: fixed;
+          left: 0;
           top: 0;
           width: 210mm;
-          height: 297mm;
-          visibility: hidden;
+          z-index: -9999;
+          opacity: 0;
           pointer-events: none;
+          background: white;
         `;
-        document.body.appendChild(pdfIframe);
+        document.body.appendChild(pdfContainer);
       }
+
+      // Helper function to convert image URL to data URL
+      const imageToDataURL = async (imgSrc: string): Promise<string> => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+              resolve(canvas.toDataURL("image/png"));
+            } else {
+              resolve(imgSrc);
+            }
+          };
+          img.onerror = () => resolve(imgSrc);
+          img.src = imgSrc;
+        });
+      };
 
       for (const credential of selectedCredentials) {
         try {
@@ -260,7 +284,7 @@ export function CredentialsList() {
               const filename = `credential-${credential.credentialId.split(":").pop()}.json`;
               zip.file(filename, JSON.stringify(data, null, 2));
             }
-          } else if (html2pdfModule && pdfIframe) {
+          } else if (html2pdfModule && pdfContainer) {
             const response = await fetch(`/api/credentials/${credential.id}/pdf`);
             if (response.ok) {
               const htmlContent = await response.text();
@@ -268,83 +292,80 @@ export function CredentialsList() {
               // Extract body content from the full HTML document
               const parser = new DOMParser();
               const doc = parser.parseFromString(htmlContent, "text/html");
-              const bodyContent = doc.body.innerHTML;
-              const styles = doc.head.querySelectorAll("style");
 
-              // Write content to the reusable iframe
-              const iframeDoc = pdfIframe.contentDocument || pdfIframe.contentWindow?.document;
-              if (iframeDoc) {
-                // Remove the print button from body content before rendering
-                const tempDiv = document.createElement("div");
-                tempDiv.innerHTML = bodyContent;
-                const printButtons = tempDiv.querySelectorAll(".print-button, .no-print, button");
-                printButtons.forEach(btn => btn.remove());
-                const cleanedBodyContent = tempDiv.innerHTML;
+              // Get all styles from head
+              const styles = Array.from(doc.head.querySelectorAll("style"))
+                .map(s => s.outerHTML)
+                .join("");
 
-                iframeDoc.open();
-                iframeDoc.write(`
-                  <!DOCTYPE html>
-                  <html>
-                  <head>
-                    <style>
-                      body { margin: 0; padding: 20px; background: white; }
-                      .no-print, .print-button, button { display: none !important; }
-                    </style>
-                    ${Array.from(styles).map(s => s.outerHTML).join("")}
-                  </head>
-                  <body>${cleanedBodyContent}</body>
-                  </html>
-                `);
-                iframeDoc.close();
+              // Remove print buttons from body content
+              const printButtons = doc.body.querySelectorAll(".print-button, .no-print, button");
+              printButtons.forEach(btn => btn.remove());
 
-                // Wait for images (like QR codes) to load
-                const images = iframeDoc.querySelectorAll("img");
-                if (images.length > 0) {
-                  await Promise.all(
-                    Array.from(images).map(
-                      (img) =>
-                        new Promise<void>((resolve) => {
-                          if (img.complete) {
-                            resolve();
-                          } else {
-                            img.onload = () => resolve();
-                            img.onerror = () => resolve();
-                          }
-                        })
-                    )
-                  );
+              // Convert all images to data URLs to ensure they're captured
+              const images = doc.body.querySelectorAll("img");
+              for (const img of Array.from(images)) {
+                if (img.src && !img.src.startsWith("data:")) {
+                  const dataUrl = await imageToDataURL(img.src);
+                  img.src = dataUrl;
                 }
-
-                // Additional wait for rendering
-                await new Promise(resolve => setTimeout(resolve, 200));
-
-                // Convert iframe body to PDF
-                // Use html2canvas options to prevent flickering in the main page
-                const pdfBlob = await html2pdfModule()
-                  .set({
-                    margin: 10,
-                    filename: `credential-${credential.credentialId.split(":").pop()}.pdf`,
-                    image: { type: "jpeg", quality: 0.98 },
-                    html2canvas: {
-                      scale: 2,
-                      useCORS: true,
-                      logging: false,
-                      // Prevent html2canvas from affecting the main window
-                      scrollX: 0,
-                      scrollY: 0,
-                      windowWidth: 794,  // A4 width at 96dpi
-                      windowHeight: 1123, // A4 height at 96dpi
-                      // Use the iframe's window context, not the main window
-                      window: pdfIframe.contentWindow,
-                    },
-                    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-                  })
-                  .from(iframeDoc.body)
-                  .outputPdf("blob");
-
-                const filename = `credential-${credential.credentialId.split(":").pop()}.pdf`;
-                zip.file(filename, pdfBlob);
               }
+
+              // Set content to the hidden container
+              pdfContainer.innerHTML = `
+                <style>
+                  * { margin: 0; padding: 0; box-sizing: border-box; }
+                  body { background: white; }
+                  .no-print, .print-button, button { display: none !important; }
+                </style>
+                ${styles}
+                <div style="padding: 20px; background: white;">
+                  ${doc.body.innerHTML}
+                </div>
+              `;
+
+              // Wait for any newly added images to load
+              const containerImages = pdfContainer.querySelectorAll("img");
+              if (containerImages.length > 0) {
+                await Promise.all(
+                  Array.from(containerImages).map(
+                    (img) =>
+                      new Promise<void>((resolve) => {
+                        if (img.complete && img.naturalHeight !== 0) {
+                          resolve();
+                        } else {
+                          img.onload = () => resolve();
+                          img.onerror = () => resolve();
+                        }
+                      })
+                  )
+                );
+              }
+
+              // Small delay to ensure rendering is complete
+              await new Promise(resolve => setTimeout(resolve, 100));
+
+              // Convert to PDF
+              const pdfBlob = await html2pdfModule()
+                .set({
+                  margin: 10,
+                  filename: `credential-${credential.credentialId.split(":").pop()}.pdf`,
+                  image: { type: "jpeg", quality: 0.98 },
+                  html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: false,
+                    scrollX: 0,
+                    scrollY: 0,
+                  },
+                  jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+                })
+                .from(pdfContainer)
+                .outputPdf("blob");
+
+              const filename = `credential-${credential.credentialId.split(":").pop()}.pdf`;
+              zip.file(filename, pdfBlob);
             }
           }
         } catch (err) {
@@ -352,9 +373,9 @@ export function CredentialsList() {
         }
       }
 
-      // Clean up the shared iframe after all PDFs are generated
-      if (pdfIframe) {
-        document.body.removeChild(pdfIframe);
+      // Clean up the hidden container
+      if (pdfContainer) {
+        document.body.removeChild(pdfContainer);
       }
 
       const content = await zip.generateAsync({ type: "blob" });
