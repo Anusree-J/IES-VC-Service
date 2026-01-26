@@ -232,8 +232,23 @@ export function CredentialsList() {
       // Dynamically import html2pdf only when needed for PDF downloads
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let html2pdfModule: any = null;
+      let pdfIframe: HTMLIFrameElement | null = null;
+
       if (format === "pdf") {
         html2pdfModule = (await import("html2pdf.js")).default;
+
+        // Create ONE hidden iframe for all PDFs - positioned completely off-screen
+        pdfIframe = document.createElement("iframe");
+        pdfIframe.style.cssText = `
+          position: absolute;
+          left: -99999px;
+          top: 0;
+          width: 210mm;
+          height: 297mm;
+          visibility: hidden;
+          pointer-events: none;
+        `;
+        document.body.appendChild(pdfIframe);
       }
 
       for (const credential of selectedCredentials) {
@@ -245,7 +260,7 @@ export function CredentialsList() {
               const filename = `credential-${credential.credentialId.split(":").pop()}.json`;
               zip.file(filename, JSON.stringify(data, null, 2));
             }
-          } else if (html2pdfModule) {
+          } else if (html2pdfModule && pdfIframe) {
             const response = await fetch(`/api/credentials/${credential.id}/pdf`);
             if (response.ok) {
               const htmlContent = await response.text();
@@ -256,20 +271,8 @@ export function CredentialsList() {
               const bodyContent = doc.body.innerHTML;
               const styles = doc.head.querySelectorAll("style");
 
-              // Create a hidden iframe to render the content properly
-              const iframe = document.createElement("iframe");
-              iframe.style.position = "fixed";
-              iframe.style.top = "0";
-              iframe.style.left = "0";
-              iframe.style.width = "210mm"; // A4 width
-              iframe.style.height = "297mm"; // A4 height
-              iframe.style.opacity = "0";
-              iframe.style.pointerEvents = "none";
-              iframe.style.zIndex = "-1";
-              document.body.appendChild(iframe);
-
-              // Write content to iframe
-              const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+              // Write content to the reusable iframe
+              const iframeDoc = pdfIframe.contentDocument || pdfIframe.contentWindow?.document;
               if (iframeDoc) {
                 iframeDoc.open();
                 iframeDoc.write(`
@@ -288,7 +291,7 @@ export function CredentialsList() {
                 iframeDoc.close();
 
                 // Wait for content to render
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 150));
 
                 // Convert iframe body to PDF
                 const pdfBlob = await html2pdfModule()
@@ -302,9 +305,6 @@ export function CredentialsList() {
                   .from(iframeDoc.body)
                   .outputPdf("blob");
 
-                // Clean up
-                document.body.removeChild(iframe);
-
                 const filename = `credential-${credential.credentialId.split(":").pop()}.pdf`;
                 zip.file(filename, pdfBlob);
               }
@@ -313,6 +313,11 @@ export function CredentialsList() {
         } catch (err) {
           console.error(`Failed to fetch credential ${credential.id}:`, err);
         }
+      }
+
+      // Clean up the shared iframe after all PDFs are generated
+      if (pdfIframe) {
+        document.body.removeChild(pdfIframe);
       }
 
       const content = await zip.generateAsync({ type: "blob" });
