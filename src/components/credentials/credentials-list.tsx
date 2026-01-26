@@ -274,6 +274,13 @@ export function CredentialsList() {
               // Write content to the reusable iframe
               const iframeDoc = pdfIframe.contentDocument || pdfIframe.contentWindow?.document;
               if (iframeDoc) {
+                // Remove the print button from body content before rendering
+                const tempDiv = document.createElement("div");
+                tempDiv.innerHTML = bodyContent;
+                const printButtons = tempDiv.querySelectorAll(".print-button, .no-print, button");
+                printButtons.forEach(btn => btn.remove());
+                const cleanedBodyContent = tempDiv.innerHTML;
+
                 iframeDoc.open();
                 iframeDoc.write(`
                   <!DOCTYPE html>
@@ -281,17 +288,35 @@ export function CredentialsList() {
                   <head>
                     <style>
                       body { margin: 0; padding: 20px; background: white; }
-                      .no-print { display: none !important; }
+                      .no-print, .print-button, button { display: none !important; }
                     </style>
                     ${Array.from(styles).map(s => s.outerHTML).join("")}
                   </head>
-                  <body>${bodyContent}</body>
+                  <body>${cleanedBodyContent}</body>
                   </html>
                 `);
                 iframeDoc.close();
 
-                // Wait for content to render
-                await new Promise(resolve => setTimeout(resolve, 150));
+                // Wait for images (like QR codes) to load
+                const images = iframeDoc.querySelectorAll("img");
+                if (images.length > 0) {
+                  await Promise.all(
+                    Array.from(images).map(
+                      (img) =>
+                        new Promise<void>((resolve) => {
+                          if (img.complete) {
+                            resolve();
+                          } else {
+                            img.onload = () => resolve();
+                            img.onerror = () => resolve();
+                          }
+                        })
+                    )
+                  );
+                }
+
+                // Additional wait for rendering
+                await new Promise(resolve => setTimeout(resolve, 200));
 
                 // Convert iframe body to PDF
                 const pdfBlob = await html2pdfModule()
