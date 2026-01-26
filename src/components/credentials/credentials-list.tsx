@@ -319,12 +319,24 @@ export function CredentialsList() {
                 await new Promise(resolve => setTimeout(resolve, 200));
 
                 // Convert iframe body to PDF
+                // Use html2canvas options to prevent flickering in the main page
                 const pdfBlob = await html2pdfModule()
                   .set({
                     margin: 10,
                     filename: `credential-${credential.credentialId.split(":").pop()}.pdf`,
                     image: { type: "jpeg", quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false },
+                    html2canvas: {
+                      scale: 2,
+                      useCORS: true,
+                      logging: false,
+                      // Prevent html2canvas from affecting the main window
+                      scrollX: 0,
+                      scrollY: 0,
+                      windowWidth: 794,  // A4 width at 96dpi
+                      windowHeight: 1123, // A4 height at 96dpi
+                      // Use the iframe's window context, not the main window
+                      window: pdfIframe.contentWindow,
+                    },
                     jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
                   })
                   .from(iframeDoc.body)
