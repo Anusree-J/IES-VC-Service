@@ -250,31 +250,64 @@ export function CredentialsList() {
             if (response.ok) {
               const htmlContent = await response.text();
 
-              // Create a temporary container to render the HTML
-              const container = document.createElement("div");
-              container.innerHTML = htmlContent;
-              container.style.position = "absolute";
-              container.style.left = "-9999px";
-              container.style.top = "0";
-              document.body.appendChild(container);
+              // Extract body content from the full HTML document
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(htmlContent, "text/html");
+              const bodyContent = doc.body.innerHTML;
+              const styles = doc.head.querySelectorAll("style");
 
-              // Convert HTML to PDF
-              const pdfBlob = await html2pdfModule()
-                .set({
-                  margin: 10,
-                  filename: `credential-${credential.credentialId.split(":").pop()}.pdf`,
-                  image: { type: "jpeg", quality: 0.98 },
-                  html2canvas: { scale: 2, useCORS: true },
-                  jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-                })
-                .from(container)
-                .outputPdf("blob");
+              // Create a hidden iframe to render the content properly
+              const iframe = document.createElement("iframe");
+              iframe.style.position = "fixed";
+              iframe.style.top = "0";
+              iframe.style.left = "0";
+              iframe.style.width = "210mm"; // A4 width
+              iframe.style.height = "297mm"; // A4 height
+              iframe.style.opacity = "0";
+              iframe.style.pointerEvents = "none";
+              iframe.style.zIndex = "-1";
+              document.body.appendChild(iframe);
 
-              // Clean up the temporary container
-              document.body.removeChild(container);
+              // Write content to iframe
+              const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+              if (iframeDoc) {
+                iframeDoc.open();
+                iframeDoc.write(`
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                    <style>
+                      body { margin: 0; padding: 20px; background: white; }
+                      .no-print { display: none !important; }
+                    </style>
+                    ${Array.from(styles).map(s => s.outerHTML).join("")}
+                  </head>
+                  <body>${bodyContent}</body>
+                  </html>
+                `);
+                iframeDoc.close();
 
-              const filename = `credential-${credential.credentialId.split(":").pop()}.pdf`;
-              zip.file(filename, pdfBlob);
+                // Wait for content to render
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Convert iframe body to PDF
+                const pdfBlob = await html2pdfModule()
+                  .set({
+                    margin: 10,
+                    filename: `credential-${credential.credentialId.split(":").pop()}.pdf`,
+                    image: { type: "jpeg", quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false },
+                    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+                  })
+                  .from(iframeDoc.body)
+                  .outputPdf("blob");
+
+                // Clean up
+                document.body.removeChild(iframe);
+
+                const filename = `credential-${credential.credentialId.split(":").pop()}.pdf`;
+                zip.file(filename, pdfBlob);
+              }
             }
           }
         } catch (err) {
