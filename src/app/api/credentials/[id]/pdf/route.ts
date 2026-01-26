@@ -20,53 +20,6 @@ const TEMPLATE_IDS: Record<CredentialType, string> = {
   STORAGE: "cmkoi3z5c003eqf0m3brr2nyc",
 };
 
-/**
- * Convert external image URLs to base64 data URLs server-side
- * This bypasses CORS restrictions that prevent client-side capture
- */
-async function embedImagesAsDataURLs(html: string): Promise<string> {
-  // Find all img src attributes
-  const imgSrcRegex = /<img([^>]*?)src=["']([^"']+)["']([^>]*?)>/gi;
-  let match;
-  const replacements: Array<{ original: string; replacement: string }> = [];
-
-  while ((match = imgSrcRegex.exec(html)) !== null) {
-    const fullTag = match[0];
-    const beforeSrc = match[1];
-    const src = match[2];
-    const afterSrc = match[3];
-
-    // Skip if already a data URL
-    if (src.startsWith("data:")) {
-      continue;
-    }
-
-    try {
-      // Fetch the image server-side (no CORS restrictions)
-      const response = await fetch(src);
-      if (response.ok) {
-        const buffer = await response.arrayBuffer();
-        const base64 = Buffer.from(buffer).toString("base64");
-        const contentType = response.headers.get("content-type") || "image/png";
-        const dataUrl = `data:${contentType};base64,${base64}`;
-
-        const newTag = `<img${beforeSrc}src="${dataUrl}"${afterSrc}>`;
-        replacements.push({ original: fullTag, replacement: newTag });
-      }
-    } catch (err) {
-      console.error(`Failed to embed image ${src}:`, err);
-      // Keep original src if fetch fails
-    }
-  }
-
-  // Apply all replacements
-  let result = html;
-  for (const { original, replacement } of replacements) {
-    result = result.replace(original, replacement);
-  }
-
-  return result;
-}
 
 /**
  * GET /api/credentials/[id]/pdf - Get credential as printable HTML
@@ -105,10 +58,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
     // Fetch the rendered HTML from SunbirdRC
     try {
-      let html = await getCredentialHTML(credential.credentialId, templateId);
-
-      // Embed all images as data URLs server-side to avoid CORS issues on client
-      html = await embedImagesAsDataURLs(html);
+      const html = await getCredentialHTML(credential.credentialId, templateId);
 
       // Wrap with print-friendly styles and auto-print script
       const printableHtml = `

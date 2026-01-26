@@ -253,6 +253,28 @@ export function CredentialsList() {
         document.body.appendChild(pdfContainer);
       }
 
+      // Helper function to convert image URL to data URL
+      const imageToDataURL = async (imgSrc: string): Promise<string> => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+              resolve(canvas.toDataURL("image/png"));
+            } else {
+              resolve(imgSrc);
+            }
+          };
+          img.onerror = () => resolve(imgSrc);
+          img.src = imgSrc;
+        });
+      };
+
       for (const credential of selectedCredentials) {
         try {
           if (format === "json") {
@@ -263,7 +285,6 @@ export function CredentialsList() {
               zip.file(filename, JSON.stringify(data, null, 2));
             }
           } else if (html2pdfModule && pdfContainer) {
-            // Server now embeds images as data URLs, so no CORS issues
             const response = await fetch(`/api/credentials/${credential.id}/pdf`);
             if (response.ok) {
               const htmlContent = await response.text();
@@ -281,6 +302,15 @@ export function CredentialsList() {
               const printButtons = doc.body.querySelectorAll(".print-button, .no-print, button");
               printButtons.forEach(btn => btn.remove());
 
+              // Convert all images to data URLs to ensure they're captured
+              const images = doc.body.querySelectorAll("img");
+              for (const img of Array.from(images)) {
+                if (img.src && !img.src.startsWith("data:")) {
+                  const dataUrl = await imageToDataURL(img.src);
+                  img.src = dataUrl;
+                }
+              }
+
               // Set content to the hidden container
               pdfContainer.innerHTML = `
                 <style>
@@ -294,7 +324,7 @@ export function CredentialsList() {
                 </div>
               `;
 
-              // Wait for images to load (they're data URLs now, but browser still needs to decode)
+              // Wait for any newly added images to load
               const containerImages = pdfContainer.querySelectorAll("img");
               if (containerImages.length > 0) {
                 await Promise.all(
