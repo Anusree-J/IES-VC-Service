@@ -229,6 +229,13 @@ export function CredentialsList() {
     try {
       const selectedCredentials = credentials.filter((c) => selectedIds.has(c.id));
 
+      // Dynamically import html2pdf only when needed for PDF downloads
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let html2pdfModule: any = null;
+      if (format === "pdf") {
+        html2pdfModule = (await import("html2pdf.js")).default;
+      }
+
       for (const credential of selectedCredentials) {
         try {
           if (format === "json") {
@@ -238,12 +245,36 @@ export function CredentialsList() {
               const filename = `credential-${credential.credentialId.split(":").pop()}.json`;
               zip.file(filename, JSON.stringify(data, null, 2));
             }
-          } else {
+          } else if (html2pdfModule) {
             const response = await fetch(`/api/credentials/${credential.id}/pdf`);
             if (response.ok) {
-              const blob = await response.blob();
+              const htmlContent = await response.text();
+
+              // Create a temporary container to render the HTML
+              const container = document.createElement("div");
+              container.innerHTML = htmlContent;
+              container.style.position = "absolute";
+              container.style.left = "-9999px";
+              container.style.top = "0";
+              document.body.appendChild(container);
+
+              // Convert HTML to PDF
+              const pdfBlob = await html2pdfModule()
+                .set({
+                  margin: 10,
+                  filename: `credential-${credential.credentialId.split(":").pop()}.pdf`,
+                  image: { type: "jpeg", quality: 0.98 },
+                  html2canvas: { scale: 2, useCORS: true },
+                  jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+                })
+                .from(container)
+                .outputPdf("blob");
+
+              // Clean up the temporary container
+              document.body.removeChild(container);
+
               const filename = `credential-${credential.credentialId.split(":").pop()}.pdf`;
-              zip.file(filename, blob);
+              zip.file(filename, pdfBlob);
             }
           }
         } catch (err) {
